@@ -66,7 +66,23 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
   customer: ["tickets.view", "tickets.create", "tickets.close"],
 };
 
+function logDemoLogins() {
+  console.log("Demo logins:");
+  console.log("  admin@ourcloud.local / admin123");
+  console.log("  agent@ourcloud.local / agent123");
+}
+
 async function main() {
+  const existingUser = await prisma.user.findFirst({
+    where: { email: "agent@ourcloud.local" },
+  });
+
+  if (existingUser) {
+    console.log("Database already seeded — skipping.");
+    logDemoLogins();
+    return;
+  }
+
   for (const perm of PERMISSIONS) {
     await prisma.permission.upsert({
       where: { key: perm.key },
@@ -297,7 +313,7 @@ async function main() {
   await prisma.ticketComment.create({
     data: {
       ticketId: ticket1.id,
-      authorId: contact1.id ? agent.id : agent.id,
+      authorId: agent.id,
       body: "Hi John, we've received your ticket and are looking into the printer issue.",
     },
   });
@@ -322,9 +338,7 @@ async function main() {
   }
 
   console.log("Seed completed.");
-  console.log("Demo logins:");
-  console.log("  admin@ourcloud.local / admin123");
-  console.log("  agent@ourcloud.local / agent123");
+  logDemoLogins();
 }
 
 main()

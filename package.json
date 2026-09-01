@@ -12,6 +12,7 @@
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
     "db:setup": "prisma db push && tsx prisma/seed.ts",
+    "db:reset": "rm -f prisma/dev.db prisma/dev.db-journal && prisma db push && tsx prisma/seed.ts",
     "postinstall": "prisma generate"
   },
   "prisma": {

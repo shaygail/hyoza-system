@@ -34,11 +34,19 @@ A web-based IT Service Management (ITSM) platform for service desk technicians, 
 
 ```bash
 npm install
-npm run db:setup
+npm run db:setup   # safe to re-run — skips if already seeded
 npm run dev
 ```
 
-Open [http://127.0.0.1:4317](http://127.0.0.1:4317)
+Open [http://127.0.0.1:4317](http://127.0.0.1:4317) (use this URL consistently — do not mix with `localhost`).
+
+If `npm run dev` reports port 4317 is in use, the server is already running — just open the URL above.
+
+To wipe and re-seed the database:
+
+```bash
+npm run db:reset
+```
 
 ### Demo accounts
 
