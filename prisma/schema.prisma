@@ -1,0 +1,351 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Tenant {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  settings  String   @default("{}")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users          User[]
+  organisations  Organisation[]
+  teams          Team[]
+  workflows      Workflow[]
+  ticketTypes    TicketType[]
+  priorities     Priority[]
+  tickets        Ticket[]
+  roles          Role[]
+  ticketSequence TicketSequence?
+}
+
+model TicketSequence {
+  id       String @id @default(cuid())
+  tenantId String @unique
+  nextVal  Int    @default(1)
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id           String    @id @default(cuid())
+  tenantId     String
+  email        String
+  passwordHash String
+  name         String
+  isActive     Boolean   @default(true)
+  contactId    String?   @unique
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  tenant              Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contact             Contact?            @relation(fields: [contactId], references: [id])
+  userRoles           UserRole[]
+  teamMembers         TeamMember[]
+  assignedTickets     Ticket[]            @relation("TicketAssignee")
+  createdTickets      Ticket[]            @relation("TicketCreator")
+  comments            TicketComment[]
+  internalNotes       TicketInternalNote[]
+  activities          TicketActivity[]
+  uploadedAttachments TicketAttachment[]
+
+  @@unique([tenantId, email])
+  @@index([tenantId])
+}
+
+model Role {
+  id          String   @id @default(cuid())
+  tenantId    String
+  name        String
+  code        String
+  description String?
+  isSystem    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  rolePermissions RolePermission[]
+  userRoles       UserRole[]
+
+  @@unique([tenantId, code])
+}
+
+model Permission {
+  id          String  @id @default(cuid())
+  key         String  @unique
+  description String?
+
+  rolePermissions RolePermission[]
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+}
+
+model UserRole {
+  userId String
+  roleId String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+}
+
+model Team {
+  id        String   @id @default(cuid())
+  tenantId  String
+  name      String
+  createdAt DateTime @default(now())
+
+  tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  members     TeamMember[]
+  tickets     Ticket[]
+
+  @@index([tenantId])
+}
+
+model TeamMember {
+  teamId String
+  userId String
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([teamId, userId])
+}
+
+model Organisation {
+  id        String   @id @default(cuid())
+  tenantId  String
+  name      String
+  accountCode String?
+  status    String   @default("active")
+  phone     String?
+  email     String?
+  address   String?
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contacts Contact[]
+  tickets  Ticket[]
+
+  @@index([tenantId])
+}
+
+model Contact {
+  id             String   @id @default(cuid())
+  tenantId       String
+  organisationId String
+  name           String
+  email          String
+  phone          String?
+  jobTitle       String?
+  isPrimary      Boolean  @default(false)
+  portalAccess   Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  user         User?
+  tickets      Ticket[]
+
+  @@unique([tenantId, email])
+  @@index([organisationId])
+}
+
+model Workflow {
+  id        String   @id @default(cuid())
+  tenantId  String
+  name      String
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  tenant     Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  statuses   WorkflowStatus[]
+  transitions WorkflowTransition[]
+  ticketTypes TicketType[]
+
+  @@index([tenantId])
+}
+
+model WorkflowStatus {
+  id         String @id @default(cuid())
+  workflowId String
+  name       String
+  code       String
+  category   String
+  color      String @default("#6b7280")
+  sortOrder  Int    @default(0)
+  isTerminal Boolean @default(false)
+  pausesSla  Boolean @default(false)
+
+  workflow       Workflow             @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  tickets        Ticket[]
+  transitionsFrom WorkflowTransition[] @relation("FromStatus")
+  transitionsTo   WorkflowTransition[] @relation("ToStatus")
+
+  @@unique([workflowId, code])
+}
+
+model WorkflowTransition {
+  id             String  @id @default(cuid())
+  workflowId     String
+  fromStatusId   String
+  toStatusId     String
+  name           String
+  sortOrder      Int     @default(0)
+  requiredFields String  @default("[]")
+
+  workflow   Workflow       @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  fromStatus WorkflowStatus @relation("FromStatus", fields: [fromStatusId], references: [id], onDelete: Cascade)
+  toStatus   WorkflowStatus @relation("ToStatus", fields: [toStatusId], references: [id], onDelete: Cascade)
+}
+
+model TicketType {
+  id               String  @id @default(cuid())
+  tenantId         String
+  workflowId       String?
+  name             String
+  code             String
+  description      String?
+  visibleInPortal  Boolean @default(true)
+  sortOrder        Int     @default(0)
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  workflow Workflow? @relation(fields: [workflowId], references: [id])
+  tickets  Ticket[]
+
+  @@unique([tenantId, code])
+}
+
+model Priority {
+  id        String @id @default(cuid())
+  tenantId  String
+  name      String
+  code      String
+  color     String @default("#6b7280")
+  sortOrder Int    @default(0)
+
+  tenant  Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tickets Ticket[]
+
+  @@unique([tenantId, code])
+}
+
+model Ticket {
+  id                String    @id @default(cuid())
+  tenantId          String
+  ticketNumber      String
+  subject           String
+  description       String
+  organisationId    String
+  contactId         String?
+  assigneeId        String?
+  teamId            String?
+  statusId          String
+  priorityId        String
+  ticketTypeId      String
+  source            String    @default("agent")
+  tags              String    @default("[]")
+  dueAt             DateTime?
+  firstResponseAt   DateTime?
+  resolvedAt        DateTime?
+  closedAt          DateTime?
+  resolutionSummary String?
+  createdById       String
+  deletedAt         DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  organisation Organisation @relation(fields: [organisationId], references: [id])
+  contact      Contact?     @relation(fields: [contactId], references: [id])
+  assignee     User?        @relation("TicketAssignee", fields: [assigneeId], references: [id])
+  team         Team?        @relation(fields: [teamId], references: [id])
+  status       WorkflowStatus @relation(fields: [statusId], references: [id])
+  priority     Priority     @relation(fields: [priorityId], references: [id])
+  ticketType   TicketType   @relation(fields: [ticketTypeId], references: [id])
+  createdBy    User         @relation("TicketCreator", fields: [createdById], references: [id])
+  comments         TicketComment[]
+  internalNotes    TicketInternalNote[]
+  attachments      TicketAttachment[]
+  activities       TicketActivity[]
+
+  @@unique([tenantId, ticketNumber])
+  @@index([tenantId, statusId])
+  @@index([tenantId, assigneeId])
+  @@index([tenantId, organisationId])
+}
+
+model TicketComment {
+  id        String   @id @default(cuid())
+  ticketId  String
+  authorId  String
+  body      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  author User   @relation(fields: [authorId], references: [id])
+
+  @@index([ticketId, createdAt])
+}
+
+model TicketInternalNote {
+  id        String   @id @default(cuid())
+  ticketId  String
+  authorId  String
+  body      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  author User   @relation(fields: [authorId], references: [id])
+
+  @@index([ticketId, createdAt])
+}
+
+model TicketAttachment {
+  id           String   @id @default(cuid())
+  ticketId     String
+  uploadedById String
+  fileName     String
+  mimeType     String
+  sizeBytes    Int
+  storagePath  String
+  createdAt    DateTime @default(now())
+
+  ticket     Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  uploadedBy User   @relation(fields: [uploadedById], references: [id])
+
+  @@index([ticketId])
+}
+
+model TicketActivity {
+  id         String   @id @default(cuid())
+  ticketId   String
+  actorId    String?
+  eventType  String
+  payload    String   @default("{}")
+  visibility String   @default("internal")
+  createdAt  DateTime @default(now())
+
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  actor  User?  @relation(fields: [actorId], references: [id])
+
+  @@index([ticketId, createdAt])
+}

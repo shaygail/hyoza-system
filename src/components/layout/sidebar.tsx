@@ -1,0 +1,63 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { cn } from "@/lib/utils";
+import {
+  LayoutDashboard,
+  Ticket,
+  Users,
+  Settings,
+  ListOrdered,
+  Cloud,
+} from "lucide-react";
+
+const navItems = [
+  { href: "/app/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/app/queues", label: "Queues", icon: ListOrdered, badge: "1B" },
+  { href: "/app/tickets", label: "Tickets", icon: Ticket },
+  { href: "/app/customers", label: "Customers", icon: Users },
+  { href: "/app/admin", label: "Administration", icon: Settings },
+];
+
+export function Sidebar() {
+  const pathname = usePathname();
+
+  return (
+    <aside className="flex w-64 flex-col border-r border-slate-200 bg-white">
+      <div className="flex items-center gap-2 border-b border-slate-200 px-4 py-4">
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-ourcloud-600 text-white">
+          <Cloud className="h-5 w-5" />
+        </div>
+        <div>
+          <div className="text-sm font-semibold text-slate-900">OurCloud</div>
+          <div className="text-xs text-slate-500">Service Desk</div>
+        </div>
+      </div>
+      <nav className="flex-1 space-y-1 p-3">
+        {navItems.map((item) => {
+          const active = pathname.startsWith(item.href);
+          const Icon = item.icon;
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={cn(
+                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                active ? "bg-ourcloud-50 text-ourcloud-700" : "text-slate-600 hover:bg-slate-50"
+              )}
+            >
+              <Icon className="h-4 w-4" />
+              {item.label}
+              {item.badge && (
+                <span className="ml-auto rounded bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-500">
+                  {item.badge}
+                </span>
+              )}
+            </Link>
+          );
+        })}
+      </nav>
+    </aside>
+  );
+}
