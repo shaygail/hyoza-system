@@ -14,6 +14,8 @@
     "db:setup": "prisma db push && tsx prisma/seed.ts",
     "db:reset": "rm -f prisma/dev.db prisma/dev.db-journal && prisma db push && tsx prisma/seed.ts",
     "db:seed:phase1b": "tsx prisma/seed-phase1b.ts",
+    "db:seed:phase1c": "tsx prisma/seed-phase1c.ts",
+    "email:worker": "tsx scripts/email-worker.ts",
     "postinstall": "prisma generate"
   },
   "prisma": {

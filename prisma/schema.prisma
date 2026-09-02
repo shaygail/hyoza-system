@@ -28,7 +28,14 @@ model Tenant {
   assets         Asset[]
   queues         Queue[]
   workTypes      WorkType[]
-  slaPolicies    SlaPolicy[]
+  slaPolicies       SlaPolicy[]
+  businessCalendars BusinessCalendar[]
+  automationRules   AutomationRule[]
+  kbCategories      KbCategory[]
+  kbArticles        KbArticle[]
+  serviceAgreements ServiceAgreement[]
+  customFields      CustomFieldDefinition[]
+  emailMailboxes    EmailMailbox[]
 }
 
 model TicketSequence {
@@ -63,6 +70,7 @@ model User {
   queuePins           UserQueuePin[]
   notifications       Notification[]
   preferences         UserPreference?
+  kbArticles          KbArticle[]
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -151,9 +159,11 @@ model Organisation {
 
   tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   contacts Contact[]
-  tickets  Ticket[]
-  assets   Asset[]
-  timeEntries TimeEntry[]
+  tickets           Ticket[]
+  assets            Asset[]
+  timeEntries       TimeEntry[]
+  serviceAgreements ServiceAgreement[]
+  emailMailboxes    EmailMailbox[]
 
   @@index([tenantId])
 }
@@ -221,6 +231,8 @@ model WorkflowTransition {
   name           String
   sortOrder      Int     @default(0)
   requiredFields String  @default("[]")
+  conditions     String  @default("[]")
+  actions        String  @default("[]")
 
   workflow   Workflow       @relation(fields: [workflowId], references: [id], onDelete: Cascade)
   fromStatus WorkflowStatus @relation("FromStatus", fields: [fromStatusId], references: [id], onDelete: Cascade)
@@ -378,20 +390,194 @@ model TimeEntry {
   @@index([organisationId])
 }
 
-model SlaPolicy {
-  id                String @id @default(cuid())
-  tenantId          String
-  name              String
-  priorityId        String
-  responseMinutes   Int
-  resolutionMinutes Int
-  isDefault         Boolean @default(false)
+model BusinessCalendar {
+  id        String   @id @default(cuid())
+  tenantId  String
+  name      String
+  timezone  String   @default("Europe/London")
+  workDays  String   @default("[1,2,3,4,5]")
+  startTime String   @default("09:00")
+  endTime   String   @default("17:30")
+  holidays  String   @default("[]")
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
 
-  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  priority Priority @relation(fields: [priorityId], references: [id])
-  tickets  Ticket[]
+  tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  slaPolicies SlaPolicy[]
 
   @@index([tenantId])
+}
+
+model SlaPolicy {
+  id                 String  @id @default(cuid())
+  tenantId           String
+  name               String
+  priorityId         String
+  responseMinutes    Int
+  resolutionMinutes  Int
+  businessCalendarId String?
+  escalationMinutes  Int?
+  escalationAction   String  @default("notify")
+  isDefault          Boolean @default(false)
+
+  tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  priority         Priority          @relation(fields: [priorityId], references: [id])
+  businessCalendar BusinessCalendar? @relation(fields: [businessCalendarId], references: [id])
+  tickets          Ticket[]
+
+  @@index([tenantId])
+}
+
+model SlaPause {
+  id        String    @id @default(cuid())
+  ticketId  String
+  startedAt DateTime  @default(now())
+  endedAt   DateTime?
+  reason    String?
+
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@index([ticketId])
+}
+
+model AutomationRule {
+  id          String   @id @default(cuid())
+  tenantId    String
+  name        String
+  description String?
+  trigger     String
+  conditions  String   @default("[]")
+  actions     String   @default("[]")
+  isActive    Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+}
+
+model KbCategory {
+  id        String   @id @default(cuid())
+  tenantId  String
+  name      String
+  slug      String
+  parentId  String?
+  sortOrder Int      @default(0)
+
+  tenant   Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  parent   KbCategory?  @relation("KbCategoryTree", fields: [parentId], references: [id])
+  children KbCategory[] @relation("KbCategoryTree")
+  articles KbArticle[]
+
+  @@unique([tenantId, slug])
+  @@index([tenantId])
+}
+
+model KbArticle {
+  id          String    @id @default(cuid())
+  tenantId    String
+  categoryId  String?
+  title       String
+  slug        String
+  body        String
+  status      String    @default("draft")
+  authorId    String
+  publishedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  tenant   Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  category KbCategory? @relation(fields: [categoryId], references: [id])
+  author   User        @relation(fields: [authorId], references: [id])
+
+  @@unique([tenantId, slug])
+  @@index([tenantId, status])
+}
+
+model ServiceAgreement {
+  id                      String    @id @default(cuid())
+  tenantId                String
+  organisationId          String
+  name                    String
+  monthlyMinutesAllowance Int?
+  responseMinutes         Int?
+  resolutionMinutes       Int?
+  isActive                Boolean   @default(true)
+  startDate               DateTime  @default(now())
+  endDate                 DateTime?
+  createdAt               DateTime  @default(now())
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([organisationId])
+}
+
+model CustomFieldDefinition {
+  id         String  @id @default(cuid())
+  tenantId   String
+  entityType String  @default("ticket")
+  label      String
+  code       String
+  fieldType  String
+  options    String  @default("[]")
+  isRequired Boolean @default(false)
+  sortOrder  Int     @default(0)
+  isActive   Boolean @default(true)
+
+  tenant Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  values TicketCustomFieldValue[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+}
+
+model TicketCustomFieldValue {
+  ticketId String
+  fieldId  String
+  value    String
+
+  ticket Ticket                @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  field  CustomFieldDefinition @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+
+  @@id([ticketId, fieldId])
+}
+
+model EmailMailbox {
+  id             String   @id @default(cuid())
+  tenantId       String
+  name           String
+  emailAddress   String
+  organisationId String?
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  organisation Organisation? @relation(fields: [organisationId], references: [id])
+  emails       InboundEmail[]
+
+  @@unique([tenantId, emailAddress])
+}
+
+model InboundEmail {
+  id          String    @id @default(cuid())
+  mailboxId   String
+  messageId   String
+  fromAddress String
+  subject     String
+  body        String
+  receivedAt  DateTime  @default(now())
+  processedAt DateTime?
+  ticketId    String?
+  status      String    @default("pending")
+
+  mailbox EmailMailbox @relation(fields: [mailboxId], references: [id], onDelete: Cascade)
+  ticket  Ticket?      @relation(fields: [ticketId], references: [id])
+
+  @@unique([mailboxId, messageId])
+  @@index([status])
 }
 
 model Notification {
@@ -442,12 +628,15 @@ model Ticket {
   resolvedAt        DateTime?
   closedAt          DateTime?
   resolutionSummary String?
+  parentTicketId    String?
   createdById       String
   deletedAt         DateTime?
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
   tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  parentTicket Ticket?      @relation("LinkedTickets", fields: [parentTicketId], references: [id])
+  linkedTickets Ticket[]    @relation("LinkedTickets")
   organisation Organisation @relation(fields: [organisationId], references: [id])
   contact      Contact?     @relation(fields: [contactId], references: [id])
   assignee     User?        @relation("TicketAssignee", fields: [assigneeId], references: [id])
@@ -465,6 +654,9 @@ model Ticket {
   attachments      TicketAttachment[]
   activities       TicketActivity[]
   timeEntries      TimeEntry[]
+  slaPauses        SlaPause[]
+  customFieldValues TicketCustomFieldValue[]
+  inboundEmails    InboundEmail[]
 
   @@unique([tenantId, ticketNumber])
   @@index([tenantId, statusId])

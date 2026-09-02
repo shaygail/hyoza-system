@@ -159,6 +159,14 @@ export async function createTicket(params: {
 
   await applySlaToTicket(params.tenantId, ticket.id, params.priorityId);
 
+  const priority = await prisma.priority.findUnique({ where: { id: params.priorityId } });
+  const { runAutomationRules } = await import("@/domain/automation");
+  await runAutomationRules(params.tenantId, "ticket.created", ticket.id, {
+    source: params.source ?? "agent",
+    priorityCode: priority?.code,
+    subject: params.subject,
+  });
+
   return ticket;
 }
 
@@ -265,7 +273,22 @@ export async function transitionTicket(
   const updated = await prisma.ticket.update({
     where: { id: ticketId },
     data: updateData,
-    include: { status: true, assignee: true, priority: true },
+    include: { status: true, assignee: true, priority: true, ticketType: true },
+  });
+
+  const { handleSlaOnStatusChange } = await import("@/domain/sla-engine");
+  await handleSlaOnStatusChange(
+    ticketId,
+    transition.fromStatus.pausesSla,
+    transition.toStatus.pausesSla
+  );
+
+  const { runAutomationRules } = await import("@/domain/automation");
+  await runAutomationRules(tenantId, "status.changed", ticketId, {
+    fromStatus: transition.fromStatus.code,
+    toStatus: transition.toStatus.code,
+    priorityCode: updated.priority.code,
+    ticketTypeCode: updated.ticketType.code,
   });
 
   await logActivity({
@@ -290,14 +313,8 @@ export async function transitionTicket(
 }
 
 export async function getAvailableTransitions(ticketId: string) {
-  const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
-  if (!ticket) return [];
-
-  return prisma.workflowTransition.findMany({
-    where: { fromStatusId: ticket.statusId },
-    include: { toStatus: true },
-    orderBy: { sortOrder: "asc" },
-  });
+  const { getAvailableTransitionsForTicket } = await import("@/domain/workflows");
+  return getAvailableTransitionsForTicket(ticketId);
 }
 
 export async function getDashboardStats(tenantId: string, userId: string) {

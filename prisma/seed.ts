@@ -82,6 +82,8 @@ async function main() {
     logDemoLogins();
     const { seedPhase1B } = await import("./seed-phase1b");
     await seedPhase1B();
+    const { seedPhase1C } = await import("./seed-phase1c");
+    await seedPhase1C();
     return;
   }
 
@@ -344,6 +346,8 @@ async function main() {
 
   const { seedPhase1B } = await import("./seed-phase1b");
   await seedPhase1B();
+  const { seedPhase1C } = await import("./seed-phase1c");
+  await seedPhase1C();
 }
 
 main()

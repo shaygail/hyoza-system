@@ -13,6 +13,8 @@ import {
   HardDrive,
   Clock,
   Columns3,
+  BookOpen,
+  BarChart3,
 } from "lucide-react";
 
 const navItems = [
@@ -22,7 +24,9 @@ const navItems = [
   { href: "/app/tickets", label: "Tickets", icon: Ticket },
   { href: "/app/customers", label: "Customers", icon: Users },
   { href: "/app/assets", label: "Assets", icon: HardDrive },
+  { href: "/app/knowledge", label: "Knowledge", icon: BookOpen },
   { href: "/app/time", label: "Time", icon: Clock },
+  { href: "/app/reports", label: "Reports", icon: BarChart3 },
   { href: "/app/admin", label: "Administration", icon: Settings },
 ];
 

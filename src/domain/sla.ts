@@ -1,8 +1,10 @@
 import { prisma } from "@/lib/prisma";
+import { computeSlaDueDatesWithCalendar } from "@/domain/sla-engine";
 
 export async function getSlaPolicyForPriority(tenantId: string, priorityId: string) {
   return prisma.slaPolicy.findFirst({
     where: { tenantId, priorityId },
+    include: { businessCalendar: true },
   });
 }
 
@@ -23,10 +25,12 @@ export async function applySlaToTicket(tenantId: string, ticketId: string, prior
   const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
   if (!ticket) return null;
 
-  const { responseDueAt, resolutionDueAt } = computeSlaDueDates(
+  const { responseDueAt, resolutionDueAt } = await computeSlaDueDatesWithCalendar(
+    tenantId,
     ticket.createdAt,
     policy.responseMinutes,
-    policy.resolutionMinutes
+    policy.resolutionMinutes,
+    policy.businessCalendarId
   );
 
   return prisma.ticket.update({

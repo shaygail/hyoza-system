@@ -16,7 +16,7 @@ A web-based IT Service Management (ITSM) platform for service desk technicians, 
 - Agent dashboard and ticket views
 - Customer organisation management
 
-## Phase 1B — Service Desk (current)
+## Phase 1B — Service Desk
 
 - Filter-based queues with pinning
 - Ticket search and filter panel
@@ -27,6 +27,22 @@ A web-based IT Service Management (ITSM) platform for service desk technicians, 
 - Basic SLA (due dates, at-risk dashboard widget)
 - In-app notifications (email logged in dev console)
 - Manager dashboard SLA widgets
+- Board view with drag-and-drop status changes
+- Editable dashboard layout
+- User role assignment in admin
+
+## Phase 1C — Advanced Service Management (current)
+
+- Workflow builder with transition conditions
+- Full SLA engine (business hours, holidays, pause/resume, escalation)
+- Email-to-ticket worker (`npm run email:worker`)
+- Automation rules (triggers, conditions, actions)
+- Knowledge base (articles, categories)
+- Service agreements with time allowance
+- Reports and CSV export
+- Admin-defined custom fields
+- Problem and Change ticket types
+- Custom roles with configurable permissions
 
 ## Tech stack
 
@@ -60,10 +76,17 @@ To wipe and re-seed the database:
 npm run db:reset
 ```
 
-To seed Phase 1B data on an existing database:
+To seed Phase 1B or 1C data on an existing database:
 
 ```bash
 npm run db:seed:phase1b
+npm run db:seed:phase1c
+```
+
+To process inbound emails and SLA escalations:
+
+```bash
+npm run email:worker
 ```
 
 ### Demo accounts
@@ -103,9 +126,8 @@ prisma/
 
 ## Roadmap
 
-- **Phase 1B:** Queues, search, time tracking, assets, customer portal, notifications, basic SLA
-- **Phase 1C:** Full workflows, SLA engine, email-to-ticket, automation, knowledge base, reports
-- **Phase 2:** Multi-tenancy, data centre deployment, integrations
+- **Phase 1A–1C:** Core ticketing through advanced service management (complete)
+- **Phase 2:** Multi-tenancy, data centre deployment, integrations, SSO
 
 ## Production database
 
