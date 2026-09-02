@@ -12,10 +12,12 @@ import {
   Cloud,
   HardDrive,
   Clock,
+  Columns3,
 } from "lucide-react";
 
 const navItems = [
   { href: "/app/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/app/board", label: "Board", icon: Columns3 },
   { href: "/app/queues", label: "Queues", icon: ListOrdered },
   { href: "/app/tickets", label: "Tickets", icon: Ticket },
   { href: "/app/customers", label: "Customers", icon: Users },

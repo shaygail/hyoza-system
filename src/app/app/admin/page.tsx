@@ -1,45 +1,18 @@
-import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import Link from "next/link";
+import { UserAdminPanel } from "@/components/admin/user-admin";
 
-export default async function AdminPage() {
-  const session = await auth();
-  if (!session?.user) return null;
-
-  const users = await prisma.user.findMany({
-    where: { tenantId: session.user.tenantId },
-    include: { userRoles: { include: { role: true } } },
-    orderBy: { name: "asc" },
-  });
-
+export default function AdminPage() {
   return (
-    <div className="space-y-4">
-      <h1 className="text-2xl font-semibold text-slate-900">Administration</h1>
-      <p className="text-sm text-slate-500">User management overview. Full admin UI expands in later phases.</p>
-
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-        <table className="w-full text-sm">
-          <thead className="border-b border-slate-200 bg-slate-50">
-            <tr>
-              <th className="px-4 py-3 text-left font-medium text-slate-600">Name</th>
-              <th className="px-4 py-3 text-left font-medium text-slate-600">Email</th>
-              <th className="px-4 py-3 text-left font-medium text-slate-600">Roles</th>
-              <th className="px-4 py-3 text-left font-medium text-slate-600">Status</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {users.map((user) => (
-              <tr key={user.id}>
-                <td className="px-4 py-3 font-medium text-slate-900">{user.name}</td>
-                <td className="px-4 py-3 text-slate-600">{user.email}</td>
-                <td className="px-4 py-3 text-slate-600">
-                  {user.userRoles.map((ur) => ur.role.name).join(", ")}
-                </td>
-                <td className="px-4 py-3 capitalize text-slate-600">{user.isActive ? "Active" : "Inactive"}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+    <div className="space-y-6">
+      <nav className="flex gap-4 border-b border-slate-200 pb-2 text-sm">
+        <Link href="/app/admin" className="font-medium text-ourcloud-600 border-b-2 border-ourcloud-600 pb-2">
+          Users & Roles
+        </Link>
+        <Link href="/app/admin" className="text-slate-500 hover:text-slate-700 pb-2">
+          Settings
+        </Link>
+      </nav>
+      <UserAdminPanel />
     </div>
   );
 }

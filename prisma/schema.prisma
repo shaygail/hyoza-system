@@ -62,6 +62,7 @@ model User {
   timeEntries         TimeEntry[]
   queuePins           UserQueuePin[]
   notifications       Notification[]
+  preferences         UserPreference?
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -406,6 +407,13 @@ model Notification {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, isRead])
+}
+
+model UserPreference {
+  userId          String @id
+  dashboardLayout String @default("[\"myOpen\",\"unassigned\",\"slaAtRisk\",\"recent\",\"myTickets\"]")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Ticket {

@@ -4,7 +4,7 @@ A web-based IT Service Management (ITSM) platform for service desk technicians, 
 
 **Design principle:** *Familiar first. Powerful second.*
 
-## Phase 1A — Core Ticketing (current)
+## Phase 1A — Core Ticketing
 
 - Authentication with role-based permissions
 - Users, teams, organisations, contacts
@@ -15,6 +15,18 @@ A web-based IT Service Management (ITSM) platform for service desk technicians, 
 - File attachments (local storage)
 - Agent dashboard and ticket views
 - Customer organisation management
+
+## Phase 1B — Service Desk (current)
+
+- Filter-based queues with pinning
+- Ticket search and filter panel
+- Ticket types (Incident, Service Request, Task) and categories
+- Asset reference model with ticket linking
+- Time tracking (quick log from ticket detail)
+- Customer portal (create, view, reply to tickets)
+- Basic SLA (due dates, at-risk dashboard widget)
+- In-app notifications (email logged in dev console)
+- Manager dashboard SLA widgets
 
 ## Tech stack
 
@@ -48,12 +60,19 @@ To wipe and re-seed the database:
 npm run db:reset
 ```
 
+To seed Phase 1B data on an existing database:
+
+```bash
+npm run db:seed:phase1b
+```
+
 ### Demo accounts
 
 | Email | Password | Role |
 |-------|----------|------|
 | admin@ourcloud.local | admin123 | Administrator |
 | agent@ourcloud.local | agent123 | Agent |
+| john.smith@abc-limited.example | customer123 | Customer (portal) |
 
 ## Project structure
 

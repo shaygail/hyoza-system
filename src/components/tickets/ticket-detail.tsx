@@ -7,7 +7,8 @@ import { Textarea } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/utils";
 import { getActivityLabel } from "@/domain/activity";
-import { Paperclip, MessageSquare, Lock, Clock } from "lucide-react";
+import Link from "next/link";
+import { Paperclip, MessageSquare, Lock, Clock, Columns3 } from "lucide-react";
 
 interface TicketData {
   id: string;
@@ -175,213 +176,203 @@ export function TicketDetailClient({
 
   return (
     <div className="space-y-4">
-      <div className="rounded-xl border border-slate-200 bg-white p-6">
-        <div className="flex items-start justify-between">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-mono text-sm text-ourcloud-600">{ticket.ticketNumber}</span>
-              <Badge color={ticket.status.color}>{ticket.status.name}</Badge>
-              <Badge color={ticket.priority.color}>{ticket.priority.name}</Badge>
-            </div>
-            <h1 className="mt-2 text-xl font-semibold text-slate-900">{ticket.subject}</h1>
-            <p className="mt-1 text-sm text-slate-500">
-              {ticket.organisation.name}
-              {ticket.contact && ` · ${ticket.contact.name}`}
-            </p>
-          </div>
-        </div>
+      {/* Breadcrumb */}
+      <nav className="flex items-center gap-2 text-sm text-slate-500">
+        <Link href="/app/tickets" className="hover:text-ourcloud-600">Tickets</Link>
+        <span>/</span>
+        <Link href="/app/board" className="hover:text-ourcloud-600 flex items-center gap-1">
+          <Columns3 className="h-3 w-3" /> Board
+        </Link>
+        <span>/</span>
+        <span className="font-mono text-ourcloud-600">{ticket.ticketNumber}</span>
+      </nav>
 
-        <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-4 text-sm">
-          <div>
-            <span className="text-slate-500">Type</span>
-            <p className="font-medium">{ticket.ticketType.name}</p>
-          </div>
-          <div>
-            <span className="text-slate-500">Assignee</span>
-            <p className="font-medium">{ticket.assignee?.name ?? "Unassigned"}</p>
-          </div>
-          <div>
-            <span className="text-slate-500">Team</span>
-            <p className="font-medium">{ticket.team?.name ?? "—"}</p>
-          </div>
-          {ticket.resolutionDueAt && (
-            <div>
-              <span className="text-slate-500">SLA Due</span>
-              <p className="font-medium">{formatDate(ticket.resolutionDueAt)}</p>
-            </div>
-          )}
-          {ticket.asset && (
-            <div>
-              <span className="text-slate-500">Asset</span>
-              <p className="font-medium">{ticket.asset.assetTag}</p>
-            </div>
-          )}
-        </div>
-
-        {transitions.length > 0 && (
-          <div className="mt-4 flex flex-wrap gap-2">
-            {transitions.map((t) => (
-              <Button key={t.id} variant="secondary" size="sm" onClick={() => handleTransition(t)} disabled={loading}>
-                {t.name} → {t.toStatus.name}
-              </Button>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div className="flex flex-wrap gap-2">
-        <Button variant="reply" size="sm" onClick={() => setComposeMode(composeMode === "reply" ? null : "reply")}>
-          <MessageSquare className="mr-2 h-4 w-4" />
-          Reply to Customer
-        </Button>
-        <Button variant="internal" size="sm" onClick={() => setComposeMode(composeMode === "note" ? null : "note")}>
-          <Lock className="mr-2 h-4 w-4" />
-          Add Internal Note
-        </Button>
-        <label className="inline-flex cursor-pointer items-center rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50">
-          <Paperclip className="mr-2 h-4 w-4" />
-          Attach
-          <input type="file" className="hidden" onChange={handleFileUpload} />
-        </label>
-        <Button variant="secondary" size="sm" onClick={() => handleLogTime(15)} disabled={loading}>
-          <Clock className="mr-2 h-4 w-4" />Log 15m
-        </Button>
-        <Button variant="secondary" size="sm" onClick={() => handleLogTime(30)} disabled={loading}>
-          Log 30m
-        </Button>
-      </div>
-
-      {composeMode === "reply" && (
-        <div className="rounded-xl border-2 border-blue-200 bg-blue-50 p-4">
-          <p className="mb-2 text-xs font-medium text-blue-700">Reply to Customer — visible to customer</p>
-          <Textarea value={replyBody} onChange={(e) => setReplyBody(e.target.value)} placeholder="Type your reply..." />
-          <div className="mt-2 flex gap-2">
-            <Button variant="reply" size="sm" onClick={handleReply} disabled={loading}>Send Reply</Button>
-            <Button variant="ghost" size="sm" onClick={() => setComposeMode(null)}>Cancel</Button>
-          </div>
-        </div>
-      )}
-
-      {composeMode === "note" && (
-        <div className="rounded-xl border-2 border-amber-200 bg-amber-50 p-4">
-          <p className="mb-2 text-xs font-medium text-amber-700">Internal Note — only visible to your team</p>
-          <Textarea value={noteBody} onChange={(e) => setNoteBody(e.target.value)} placeholder="Type internal note..." />
-          <div className="mt-2 flex gap-2">
-            <Button variant="internal" size="sm" onClick={handleInternalNote} disabled={loading}>Add Note</Button>
-            <Button variant="ghost" size="sm" onClick={() => setComposeMode(null)}>Cancel</Button>
-          </div>
-        </div>
-      )}
-
-      <div className="rounded-xl border border-slate-200 bg-white">
-        <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
-          <h2 className="font-medium text-slate-900">Timeline</h2>
-          <div className="flex gap-1">
-            {(["all", "customer", "internal", "system"] as TimelineFilter[]).map((f) => (
-              <button
-                key={f}
-                onClick={() => setTimelineFilter(f)}
-                className={`rounded px-2 py-1 text-xs font-medium capitalize ${
-                  timelineFilter === f ? "bg-ourcloud-100 text-ourcloud-700" : "text-slate-500 hover:bg-slate-50"
-                }`}
-              >
-                {f}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="divide-y divide-slate-100 p-4 space-y-4">
-          {filteredTimeline.length === 0 && (
-            <p className="text-sm text-slate-500">No activity yet.</p>
-          )}
-          {filteredTimeline.map((item) => {
-            if (item.type === "comment") {
-              return (
-                <div key={`c-${item.data.id}`} className="rounded-lg border-l-4 border-blue-500 bg-blue-50/50 p-3">
-                  <div className="flex items-center gap-2 text-xs text-blue-700">
-                    <MessageSquare className="h-3 w-3" />
-                    <span className="font-medium">Agent Reply — {item.data.author.name}</span>
-                    <span className="text-blue-500">{formatDate(item.data.createdAt)}</span>
-                  </div>
-                  <p className="mt-2 text-sm text-slate-700 whitespace-pre-wrap">{item.data.body}</p>
-                </div>
-              );
-            }
-            if (item.type === "note") {
-              return (
-                <div key={`n-${item.data.id}`} className="rounded-lg border-l-4 border-amber-500 bg-amber-50/50 p-3">
-                  <div className="flex items-center gap-2 text-xs text-amber-700">
-                    <Lock className="h-3 w-3" />
-                    <span className="font-medium">Internal Note — {item.data.author.name}</span>
-                    <span className="text-amber-500">{formatDate(item.data.createdAt)}</span>
-                  </div>
-                  <p className="mt-2 text-sm text-slate-700 whitespace-pre-wrap">{item.data.body}</p>
-                </div>
-              );
-            }
-            const payload = JSON.parse(item.data.payload || "{}");
-            return (
-              <div key={`a-${item.data.id}`} className="rounded-lg border-l-4 border-slate-300 bg-slate-50 p-3">
-                <div className="flex items-center gap-2 text-xs text-slate-500">
-                  <span className="font-medium">
-                    System — {getActivityLabel(item.data.eventType, payload)}
-                  </span>
-                  {item.data.actor && <span>by {item.data.actor.name}</span>}
-                  <span>{formatDate(item.data.createdAt)}</span>
-                </div>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        {/* Main content — issue body */}
+        <div className="lg:col-span-2 space-y-4">
+          <div className="rounded-lg border border-slate-200 bg-white">
+            <div className="border-b border-slate-200 px-6 py-4">
+              <div className="flex items-center gap-2 text-sm">
+                <Badge color={ticket.ticketType.name === "Incident" ? "#ef4444" : "#3b82f6"}>{ticket.ticketType.name}</Badge>
+                <span className="font-mono text-ourcloud-600">{ticket.ticketNumber}</span>
               </div>
-            );
-          })}
+              <h1 className="mt-2 text-2xl font-semibold text-slate-900">{ticket.subject}</h1>
+            </div>
+
+            <div className="flex flex-wrap gap-2 border-b border-slate-200 px-6 py-3 bg-slate-50">
+              <Button variant="reply" size="sm" onClick={() => setComposeMode(composeMode === "reply" ? null : "reply")}>
+                <MessageSquare className="mr-2 h-4 w-4" />Reply
+              </Button>
+              <Button variant="internal" size="sm" onClick={() => setComposeMode(composeMode === "note" ? null : "note")}>
+                <Lock className="mr-2 h-4 w-4" />Internal Note
+              </Button>
+              <label className="inline-flex cursor-pointer items-center rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50">
+                <Paperclip className="mr-2 h-4 w-4" />Attach
+                <input type="file" className="hidden" onChange={handleFileUpload} />
+              </label>
+              <Button variant="secondary" size="sm" onClick={() => handleLogTime(15)} disabled={loading}>
+                <Clock className="mr-2 h-4 w-4" />15m
+              </Button>
+              <Button variant="secondary" size="sm" onClick={() => handleLogTime(30)} disabled={loading}>30m</Button>
+            </div>
+
+            <div className="px-6 py-4">
+              <h2 className="text-sm font-semibold text-slate-700 mb-2">Description</h2>
+              <p className="text-sm text-slate-700 whitespace-pre-wrap">{ticket.description}</p>
+              {ticket.resolutionSummary && (
+                <>
+                  <h2 className="text-sm font-semibold text-slate-700 mt-4 mb-2">Resolution</h2>
+                  <p className="text-sm text-slate-700 whitespace-pre-wrap">{ticket.resolutionSummary}</p>
+                </>
+              )}
+            </div>
+          </div>
+
+          {composeMode === "reply" && (
+            <div className="rounded-lg border-2 border-blue-200 bg-blue-50 p-4">
+              <p className="mb-2 text-xs font-medium text-blue-700">Reply to Customer</p>
+              <Textarea value={replyBody} onChange={(e) => setReplyBody(e.target.value)} placeholder="Type your reply..." />
+              <div className="mt-2 flex gap-2">
+                <Button variant="reply" size="sm" onClick={handleReply} disabled={loading}>Send Reply</Button>
+                <Button variant="ghost" size="sm" onClick={() => setComposeMode(null)}>Cancel</Button>
+              </div>
+            </div>
+          )}
+
+          {composeMode === "note" && (
+            <div className="rounded-lg border-2 border-amber-200 bg-amber-50 p-4">
+              <p className="mb-2 text-xs font-medium text-amber-700">Internal Note</p>
+              <Textarea value={noteBody} onChange={(e) => setNoteBody(e.target.value)} placeholder="Type internal note..." />
+              <div className="mt-2 flex gap-2">
+                <Button variant="internal" size="sm" onClick={handleInternalNote} disabled={loading}>Add Note</Button>
+                <Button variant="ghost" size="sm" onClick={() => setComposeMode(null)}>Cancel</Button>
+              </div>
+            </div>
+          )}
+
+          <div className="rounded-lg border border-slate-200 bg-white">
+            <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+              <h2 className="font-medium text-slate-900">Activity</h2>
+              <div className="flex gap-1">
+                {(["all", "customer", "internal", "system"] as TimelineFilter[]).map((f) => (
+                  <button
+                    key={f}
+                    onClick={() => setTimelineFilter(f)}
+                    className={`rounded px-2 py-1 text-xs font-medium capitalize ${
+                      timelineFilter === f ? "bg-ourcloud-100 text-ourcloud-700" : "text-slate-500 hover:bg-slate-50"
+                    }`}
+                  >
+                    {f}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="divide-y divide-slate-100 p-4 space-y-4">
+              {filteredTimeline.length === 0 && <p className="text-sm text-slate-500">No activity yet.</p>}
+              {filteredTimeline.map((item) => {
+                if (item.type === "comment") {
+                  return (
+                    <div key={`c-${item.data.id}`} className="rounded-lg border-l-4 border-blue-500 bg-blue-50/50 p-3">
+                      <div className="flex items-center gap-2 text-xs text-blue-700">
+                        <MessageSquare className="h-3 w-3" />
+                        <span className="font-medium">{item.data.author.name}</span>
+                        <span>{formatDate(item.data.createdAt)}</span>
+                      </div>
+                      <p className="mt-2 text-sm text-slate-700 whitespace-pre-wrap">{item.data.body}</p>
+                    </div>
+                  );
+                }
+                if (item.type === "note") {
+                  return (
+                    <div key={`n-${item.data.id}`} className="rounded-lg border-l-4 border-amber-500 bg-amber-50/50 p-3">
+                      <div className="flex items-center gap-2 text-xs text-amber-700">
+                        <Lock className="h-3 w-3" />
+                        <span className="font-medium">{item.data.author.name}</span>
+                        <span>{formatDate(item.data.createdAt)}</span>
+                      </div>
+                      <p className="mt-2 text-sm text-slate-700 whitespace-pre-wrap">{item.data.body}</p>
+                    </div>
+                  );
+                }
+                const payload = JSON.parse(item.data.payload || "{}");
+                return (
+                  <div key={`a-${item.data.id}`} className="text-xs text-slate-500">
+                    {getActivityLabel(item.data.eventType, payload)}
+                    {item.data.actor && ` — ${item.data.actor.name}`}
+                    <span className="ml-2">{formatDate(item.data.createdAt)}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Right sidebar — issue details */}
+        <div className="space-y-4">
+          <div className="rounded-lg border border-slate-200 bg-white">
+            <div className="border-b border-slate-200 px-4 py-3">
+              <h2 className="text-sm font-semibold text-slate-700">Details</h2>
+            </div>
+            <dl className="divide-y divide-slate-100 text-sm">
+              <DetailRow label="Status">
+                <Badge color={ticket.status.color}>{ticket.status.name}</Badge>
+              </DetailRow>
+              <DetailRow label="Priority">
+                <Badge color={ticket.priority.color}>{ticket.priority.name}</Badge>
+              </DetailRow>
+              <DetailRow label="Assignee">
+                {ticket.assignee?.name ?? <span className="text-slate-400">Unassigned</span>}
+              </DetailRow>
+              <DetailRow label="Customer">{ticket.organisation.name}</DetailRow>
+              {ticket.contact && <DetailRow label="Contact">{ticket.contact.name}</DetailRow>}
+              <DetailRow label="Team">{ticket.team?.name ?? "—"}</DetailRow>
+              <DetailRow label="Type">{ticket.ticketType.name}</DetailRow>
+              {ticket.resolutionDueAt && (
+                <DetailRow label="SLA Due">{formatDate(ticket.resolutionDueAt)}</DetailRow>
+              )}
+              {ticket.asset && <DetailRow label="Asset">{ticket.asset.assetTag}</DetailRow>}
+            </dl>
+          </div>
+
+          {transitions.length > 0 && (
+            <div className="rounded-lg border border-slate-200 bg-white p-4">
+              <h2 className="text-sm font-semibold text-slate-700 mb-3">Workflow</h2>
+              <div className="flex flex-col gap-2">
+                {transitions.map((t) => (
+                  <Button key={t.id} variant="secondary" size="sm" className="justify-start" onClick={() => handleTransition(t)} disabled={loading}>
+                    {t.name}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {ticket.timeEntries && ticket.timeEntries.length > 0 && (
+            <div className="rounded-lg border border-slate-200 bg-white p-4">
+              <h2 className="text-sm font-semibold text-slate-700 mb-2">Time</h2>
+              <p className="text-2xl font-semibold text-ourcloud-700">
+                {ticket.timeEntries.reduce((s, e) => s + e.durationMinutes, 0)}m
+              </p>
+              <p className="text-xs text-slate-500">logged on this ticket</p>
+            </div>
+          )}
+
+          {ticket.attachments.length > 0 && (
+            <div className="rounded-lg border border-slate-200 bg-white p-4">
+              <h2 className="text-sm font-semibold text-slate-700 mb-2">Attachments</h2>
+              <ul className="space-y-1 text-sm">
+                {ticket.attachments.map((a) => (
+                  <li key={a.id}>
+                    <a href={`/api/v1/tickets/${ticket.id}/attachments/${a.id}`} className="text-ourcloud-600 hover:underline">
+                      {a.fileName}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       </div>
-
-      <div className="rounded-xl border border-slate-200 bg-white p-4">
-        <h2 className="font-medium text-slate-900 mb-2">Description</h2>
-        <p className="text-sm text-slate-700 whitespace-pre-wrap">{ticket.description}</p>
-        {ticket.resolutionSummary && (
-          <>
-            <h2 className="font-medium text-slate-900 mt-4 mb-2">Resolution</h2>
-            <p className="text-sm text-slate-700 whitespace-pre-wrap">{ticket.resolutionSummary}</p>
-          </>
-        )}
-      </div>
-
-      {ticket.timeEntries && ticket.timeEntries.length > 0 && (
-        <div className="rounded-xl border border-slate-200 bg-white p-4">
-          <h2 className="font-medium text-slate-900 mb-2">Time Logged</h2>
-          <ul className="space-y-1 text-sm">
-            {ticket.timeEntries.map((e) => (
-              <li key={e.id} className="text-slate-600">
-                {e.durationMinutes}m — {e.user.name}
-                {e.workType && ` (${e.workType.name})`}
-                {e.notes && ` — ${e.notes}`}
-              </li>
-            ))}
-          </ul>
-          <p className="mt-2 text-xs text-slate-400">
-            Total: {ticket.timeEntries.reduce((s, e) => s + e.durationMinutes, 0)} minutes
-          </p>
-        </div>
-      )}
-
-      {ticket.attachments.length > 0 && (
-        <div className="rounded-xl border border-slate-200 bg-white p-4">
-          <h2 className="font-medium text-slate-900 mb-2">Attachments</h2>
-          <ul className="space-y-1">
-            {ticket.attachments.map((a) => (
-              <li key={a.id}>
-                <a
-                  href={`/api/v1/tickets/${ticket.id}/attachments/${a.id}`}
-                  className="text-sm text-ourcloud-600 hover:underline"
-                >
-                  {a.fileName} ({Math.round(a.sizeBytes / 1024)} KB)
-                </a>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
 
       {resolveModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
@@ -401,6 +392,15 @@ export function TicketDetailClient({
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function DetailRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex justify-between gap-4 px-4 py-3">
+      <dt className="text-slate-500 shrink-0">{label}</dt>
+      <dd className="font-medium text-slate-900 text-right">{children}</dd>
     </div>
   );
 }
