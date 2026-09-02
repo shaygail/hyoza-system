@@ -21,7 +21,11 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
   const serialized = {
     ...ticket,
     resolutionDueAt: ticket.resolutionDueAt?.toISOString() ?? null,
-    comments: ticket.comments.map((c) => ({ ...c, createdAt: c.createdAt.toISOString() })),
+    comments: ticket.comments.map((c) => ({
+      ...c,
+      createdAt: c.createdAt.toISOString(),
+      onBehalfOfContact: c.onBehalfOfContact,
+    })),
     internalNotes: ticket.internalNotes.map((n) => ({ ...n, createdAt: n.createdAt.toISOString() })),
     attachments: ticket.attachments.map((a) => ({ ...a, createdAt: a.createdAt.toISOString() })),
     activities: ticket.activities.map((a) => ({ ...a, createdAt: a.createdAt.toISOString() })),
@@ -31,7 +35,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
     <TicketDetailClient
       ticket={serialized as Parameters<typeof TicketDetailClient>[0]["ticket"]}
       transitions={transitions.map((t) => ({ ...t, requiredFields: t.requiredFields }))}
-      metadata={{ users, priorities }}
+      metadata={{ users, priorities, currentUserName: session.user.name ?? "Agent" }}
     />
   );
 }

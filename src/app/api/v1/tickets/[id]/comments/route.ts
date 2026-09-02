@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { addComment } from "@/domain/comments";
+import { addComment, addCommentAsContact } from "@/domain/comments";
 import { requirePermission } from "@/lib/permissions";
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -13,7 +13,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const body = await request.json();
 
   try {
-    const comment = await addComment(id, session.user.id, body.body);
+    const comment =
+      body.replyAs === "contact"
+        ? await addCommentAsContact(id, session.user.id, body.body)
+        : await addComment(id, session.user.id, body.body);
     return NextResponse.json(comment, { status: 201 });
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 400 });

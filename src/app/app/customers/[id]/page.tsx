@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/utils";
+import { ContactPortalAccess } from "@/components/customers/contact-portal-access";
 
 export default async function CustomerDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
@@ -13,7 +14,7 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
   const organisation = await prisma.organisation.findFirst({
     where: { id, tenantId: session.user.tenantId },
     include: {
-      contacts: true,
+      contacts: { include: { user: { select: { id: true } } } },
       tickets: {
         where: { deletedAt: null },
         include: { status: true, priority: true, assignee: true },
@@ -46,6 +47,12 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
                 <p className="font-medium text-slate-900">{contact.name}</p>
                 <p className="text-sm text-slate-500">{contact.email}</p>
                 {contact.jobTitle && <p className="text-xs text-slate-400">{contact.jobTitle}</p>}
+                <ContactPortalAccess
+                  contactId={contact.id}
+                  contactName={contact.name}
+                  hasPortalUser={!!contact.user}
+                  portalAccess={contact.portalAccess}
+                />
               </div>
             ))}
           </div>

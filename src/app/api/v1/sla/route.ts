@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { requirePermission } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { checkSlaEscalations } from "@/domain/sla-engine";
+import { updateSlaPolicy, updateBusinessCalendar } from "@/domain/settings";
 
 export async function GET() {
   const session = await auth();
@@ -20,17 +21,25 @@ export async function GET() {
   return NextResponse.json({ calendars, policies });
 }
 
-export async function POST(request: Request) {
+export async function PATCH(request: Request) {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   await requirePermission(session.user.id, "admin.settings");
 
   const body = await request.json();
 
+  if (body.type === "policy") {
+    await updateSlaPolicy(session.user.tenantId, body.id, body.data);
+    return NextResponse.json({ ok: true });
+  }
+  if (body.type === "calendar") {
+    await updateBusinessCalendar(session.user.tenantId, body.id, body.data);
+    return NextResponse.json({ ok: true });
+  }
   if (body.action === "check_escalations") {
     const escalated = await checkSlaEscalations(session.user.tenantId);
     return NextResponse.json({ escalated });
   }
 
-  return NextResponse.json({ error: "Unknown action" }, { status: 400 });
+  return NextResponse.json({ error: "Unknown update" }, { status: 400 });
 }

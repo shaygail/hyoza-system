@@ -68,8 +68,14 @@ export function AdminSettingsPanel({ activeTab }: { activeTab: AdminTab }) {
   const [roles, setRoles] = useState<Role[]>([]);
   const [agreements, setAgreements] = useState<ServiceAgreement[]>([]);
   const [mailboxes, setMailboxes] = useState<Mailbox[]>([]);
-  const [slaData, setSlaData] = useState<{ calendars: { name: string; timezone: string; workDays: string; startTime: string; endTime: string }[]; policies: { name: string; priority: { name: string }; responseMinutes: number; resolutionMinutes: number }[] } | null>(null);
+  const [slaData, setSlaData] = useState<{
+    calendars: { id: string; name: string; timezone: string; workDays: string; startTime: string; endTime: string }[];
+    policies: { id: string; name: string; priority: { name: string }; responseMinutes: number; resolutionMinutes: number }[];
+  } | null>(null);
   const [error, setError] = useState("");
+  const [saveMsg, setSaveMsg] = useState("");
+  const [newField, setNewField] = useState({ label: "", code: "", fieldType: "text" });
+  const [newMailbox, setNewMailbox] = useState({ name: "", emailAddress: "" });
 
   useEffect(() => {
     loadTab(activeTab);
@@ -77,34 +83,85 @@ export function AdminSettingsPanel({ activeTab }: { activeTab: AdminTab }) {
 
   async function loadTab(tab: AdminTab) {
     setError("");
+    setSaveMsg("");
     try {
       if (tab === "workflows") {
         const res = await fetch("/api/v1/workflows");
-        if (res.ok) setWorkflows(await res.json());
+        if (!res.ok) { setError("Unable to load workflows (admin permission required)"); return; }
+        setWorkflows(await res.json());
       } else if (tab === "automation") {
         const res = await fetch("/api/v1/automation");
-        if (res.ok) setRules(await res.json());
+        if (!res.ok) { setError("Unable to load automation rules"); return; }
+        setRules(await res.json());
       } else if (tab === "custom-fields") {
         const res = await fetch("/api/v1/custom-fields");
-        if (res.ok) setFields(await res.json());
+        if (!res.ok) { setError("Unable to load custom fields"); return; }
+        setFields(await res.json());
       } else if (tab === "roles") {
         const res = await fetch("/api/v1/admin/roles");
-        if (res.ok) {
-          const data = await res.json();
-          setRoles(data.roles);
-        }
+        if (!res.ok) { setError("Unable to load roles"); return; }
+        const data = await res.json();
+        setRoles(data.roles);
       } else if (tab === "agreements") {
         const res = await fetch("/api/v1/service-agreements");
-        if (res.ok) setAgreements(await res.json());
+        if (!res.ok) { setError("Unable to load agreements"); return; }
+        setAgreements(await res.json());
       } else if (tab === "email") {
         const res = await fetch("/api/v1/email");
-        if (res.ok) setMailboxes(await res.json());
+        if (!res.ok) { setError("Unable to load email settings"); return; }
+        setMailboxes(await res.json());
       } else if (tab === "sla") {
         const res = await fetch("/api/v1/sla");
-        if (res.ok) setSlaData(await res.json());
+        if (!res.ok) { setError("Unable to load SLA settings"); return; }
+        setSlaData(await res.json());
       }
     } catch {
       setError("Failed to load settings");
+    }
+  }
+
+  async function toggleRule(ruleId: string, isActive: boolean) {
+    await fetch(`/api/v1/automation/${ruleId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isActive }),
+    });
+    loadTab("automation");
+  }
+
+  async function saveSlaPolicy(policyId: string, responseMinutes: number, resolutionMinutes: number) {
+    await fetch("/api/v1/sla", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "policy", id: policyId, data: { responseMinutes, resolutionMinutes } }),
+    });
+    setSaveMsg("SLA policy saved.");
+    loadTab("sla");
+  }
+
+  async function addCustomField() {
+    if (!newField.label || !newField.code) return;
+    const res = await fetch("/api/v1/custom-fields", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(newField),
+    });
+    if (res.ok) {
+      setNewField({ label: "", code: "", fieldType: "text" });
+      loadTab("custom-fields");
+    }
+  }
+
+  async function addMailbox() {
+    if (!newMailbox.name || !newMailbox.emailAddress) return;
+    const res = await fetch("/api/v1/email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(newMailbox),
+    });
+    if (res.ok) {
+      setNewMailbox({ name: "", emailAddress: "" });
+      loadTab("email");
     }
   }
 
@@ -126,6 +183,8 @@ export function AdminSettingsPanel({ activeTab }: { activeTab: AdminTab }) {
   }
 
   if (error) return <p className="text-sm text-red-600">{error}</p>;
+
+  const saveNotice = saveMsg ? <p className="text-sm text-green-600 mb-4">{saveMsg}</p> : null;
 
   if (activeTab === "workflows") {
     const wf = workflows[0];
@@ -170,6 +229,7 @@ export function AdminSettingsPanel({ activeTab }: { activeTab: AdminTab }) {
   if (activeTab === "automation") {
     return (
       <div className="space-y-4">
+        {saveNotice}
         <h2 className="text-lg font-semibold">Automation Rules</h2>
         {rules.length === 0 ? (
           <p className="text-slate-500">No automation rules configured.</p>
@@ -177,13 +237,19 @@ export function AdminSettingsPanel({ activeTab }: { activeTab: AdminTab }) {
           <div className="space-y-3">
             {rules.map((rule) => (
               <div key={rule.id} className="rounded-xl border border-slate-200 bg-white p-4">
-                <div className="flex items-center justify-between">
-                  <span className="font-medium">{rule.name}</span>
-                  <Badge color={rule.isActive ? "#22c55e" : "#6b7280"}>
-                    {rule.isActive ? "Active" : "Inactive"}
-                  </Badge>
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <span className="font-medium">{rule.name}</span>
+                    <p className="text-sm text-slate-500 mt-1">Trigger: {rule.trigger}</p>
+                  </div>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => toggleRule(rule.id, !rule.isActive)}
+                  >
+                    {rule.isActive ? "Deactivate" : "Activate"}
+                  </Button>
                 </div>
-                <p className="text-sm text-slate-500 mt-1">Trigger: {rule.trigger}</p>
               </div>
             ))}
           </div>
@@ -195,11 +261,37 @@ export function AdminSettingsPanel({ activeTab }: { activeTab: AdminTab }) {
   if (activeTab === "custom-fields") {
     return (
       <div className="space-y-4">
+        {saveNotice}
         <h2 className="text-lg font-semibold">Custom Fields</h2>
+        <div className="rounded-xl border border-slate-200 bg-white p-4 flex flex-wrap gap-2">
+          <input
+            placeholder="Label"
+            value={newField.label}
+            onChange={(e) => setNewField({ ...newField, label: e.target.value })}
+            className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
+          />
+          <input
+            placeholder="code_snake_case"
+            value={newField.code}
+            onChange={(e) => setNewField({ ...newField, code: e.target.value })}
+            className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-mono"
+          />
+          <select
+            value={newField.fieldType}
+            onChange={(e) => setNewField({ ...newField, fieldType: e.target.value })}
+            className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
+          >
+            <option value="text">Text</option>
+            <option value="number">Number</option>
+            <option value="select">Select</option>
+            <option value="checkbox">Checkbox</option>
+          </select>
+          <Button size="sm" onClick={addCustomField}>Add Field</Button>
+        </div>
         {fields.length === 0 ? (
           <p className="text-slate-500">No custom fields defined.</p>
         ) : (
-          <table className="w-full text-sm rounded-xl border border-slate-200 overflow-hidden">
+          <table className="w-full text-sm rounded-xl border border-slate-200 overflow-hidden bg-white">
             <thead className="bg-slate-50">
               <tr>
                 <th className="px-4 py-2 text-left">Label</th>
@@ -278,6 +370,7 @@ export function AdminSettingsPanel({ activeTab }: { activeTab: AdminTab }) {
   if (activeTab === "email") {
     return (
       <div className="space-y-4">
+        {saveNotice}
         <h2 className="text-lg font-semibold">Email-to-Ticket</h2>
         {mailboxes.map((mb) => (
           <div key={mb.id} className="rounded-xl border border-slate-200 bg-white p-4 flex items-center justify-between">
@@ -290,6 +383,21 @@ export function AdminSettingsPanel({ activeTab }: { activeTab: AdminTab }) {
             </Button>
           </div>
         ))}
+        <div className="rounded-xl border border-slate-200 bg-white p-4 flex flex-wrap gap-2">
+          <input
+            placeholder="Mailbox name"
+            value={newMailbox.name}
+            onChange={(e) => setNewMailbox({ ...newMailbox, name: e.target.value })}
+            className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
+          />
+          <input
+            placeholder="email@domain.local"
+            value={newMailbox.emailAddress}
+            onChange={(e) => setNewMailbox({ ...newMailbox, emailAddress: e.target.value })}
+            className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
+          />
+          <Button size="sm" onClick={addMailbox}>Add Mailbox</Button>
+        </div>
         <p className="text-sm text-slate-500">
           Run <code className="bg-slate-100 px-1 rounded">npm run email:worker</code> to process pending inbound emails.
         </p>
@@ -301,11 +409,12 @@ export function AdminSettingsPanel({ activeTab }: { activeTab: AdminTab }) {
     if (!slaData) return <p className="text-slate-500">Loading SLA settings...</p>;
     return (
       <div className="space-y-6">
+        {saveNotice}
         <div>
           <h2 className="text-lg font-semibold">Business Calendars</h2>
           <div className="mt-3 space-y-2">
-            {slaData.calendars.map((c, i) => (
-              <div key={i} className="rounded-xl border border-slate-200 bg-white p-4 text-sm">
+            {slaData.calendars.map((c) => (
+              <div key={c.id} className="rounded-xl border border-slate-200 bg-white p-4 text-sm">
                 <p className="font-medium">{c.name}</p>
                 <p className="text-slate-500">{c.timezone} · {c.startTime}–{c.endTime}</p>
               </div>
@@ -314,12 +423,9 @@ export function AdminSettingsPanel({ activeTab }: { activeTab: AdminTab }) {
         </div>
         <div>
           <h2 className="text-lg font-semibold">SLA Policies</h2>
-          <div className="mt-3 space-y-2">
-            {slaData.policies.map((p, i) => (
-              <div key={i} className="rounded-xl border border-slate-200 bg-white p-4 text-sm">
-                <p className="font-medium">{p.name} ({p.priority.name})</p>
-                <p className="text-slate-500">Response: {p.responseMinutes}m · Resolution: {p.resolutionMinutes}m</p>
-              </div>
+          <div className="mt-3 space-y-3">
+            {slaData.policies.map((p) => (
+              <SlaPolicyEditor key={p.id} policy={p} onSave={saveSlaPolicy} />
             ))}
           </div>
         </div>
@@ -328,4 +434,44 @@ export function AdminSettingsPanel({ activeTab }: { activeTab: AdminTab }) {
   }
 
   return null;
+}
+
+function SlaPolicyEditor({
+  policy,
+  onSave,
+}: {
+  policy: { id: string; name: string; priority: { name: string }; responseMinutes: number; resolutionMinutes: number };
+  onSave: (id: string, response: number, resolution: number) => void;
+}) {
+  const [response, setResponse] = useState(policy.responseMinutes);
+  const [resolution, setResolution] = useState(policy.resolutionMinutes);
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm">
+      <p className="font-medium">{policy.name} ({policy.priority.name})</p>
+      <div className="mt-3 flex flex-wrap items-end gap-3">
+        <label>
+          <span className="text-xs text-slate-500">Response (min)</span>
+          <input
+            type="number"
+            value={response}
+            onChange={(e) => setResponse(Number(e.target.value))}
+            className="mt-1 block w-24 rounded-lg border border-slate-200 px-2 py-1"
+          />
+        </label>
+        <label>
+          <span className="text-xs text-slate-500">Resolution (min)</span>
+          <input
+            type="number"
+            value={resolution}
+            onChange={(e) => setResolution(Number(e.target.value))}
+            className="mt-1 block w-24 rounded-lg border border-slate-200 px-2 py-1"
+          />
+        </label>
+        <Button size="sm" variant="secondary" onClick={() => onSave(policy.id, response, resolution)}>
+          Save
+        </Button>
+      </div>
+    </div>
+  );
 }

@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 
 const tabs = [
   { href: "/app/admin", label: "Users & Roles", exact: true },
+  { href: "/app/admin/settings", label: "System" },
   { href: "/app/admin/workflows", label: "Workflows" },
   { href: "/app/admin/automation", label: "Automation" },
   { href: "/app/admin/sla", label: "SLA" },

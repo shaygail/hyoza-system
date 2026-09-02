@@ -17,7 +17,7 @@ interface TicketData {
   description: string;
   resolutionSummary: string | null;
   organisation: { id: string; name: string };
-  contact: { name: string } | null;
+  contact: { name: string; user?: { id: string; name: string } | null } | null;
   assignee: { id: string; name: string } | null;
   team: { name: string } | null;
   status: { id: string; name: string; color: string; code: string };
@@ -26,7 +26,7 @@ interface TicketData {
   resolutionDueAt?: string | null;
   timeEntries?: { id: string; durationMinutes: number; notes: string | null; user: { name: string }; workType: { name: string } | null }[];
   asset?: { assetTag: string; name: string } | null;
-  comments: { id: string; body: string; createdAt: string; author: { name: string } }[];
+  comments: { id: string; body: string; createdAt: string; author: { name: string }; onBehalfOfContact?: { name: string } | null }[];
   internalNotes: { id: string; body: string; createdAt: string; author: { name: string } }[];
   attachments: { id: string; fileName: string; sizeBytes: number; createdAt: string; uploadedBy: { name: string } }[];
   activities: { id: string; eventType: string; payload: string; visibility: string; createdAt: string; actor: { name: string } | null }[];
@@ -43,6 +43,7 @@ interface Metadata {
   users: { id: string; name: string }[];
   priorities: { id: string; name: string }[];
   workTypes?: { id: string; name: string }[];
+  currentUserName?: string;
 }
 
 type TimelineFilter = "all" | "customer" | "internal" | "system";
@@ -59,6 +60,8 @@ export function TicketDetailClient({
   const router = useRouter();
   const [ticket, setTicket] = useState(initialTicket);
   const [replyBody, setReplyBody] = useState("");
+  const [replyAs, setReplyAs] = useState<"agent" | "contact">("agent");
+  const [replyError, setReplyError] = useState("");
   const [noteBody, setNoteBody] = useState("");
   const [composeMode, setComposeMode] = useState<"reply" | "note" | null>(null);
   const [timelineFilter, setTimelineFilter] = useState<TimelineFilter>("all");
@@ -75,16 +78,24 @@ export function TicketDetailClient({
   async function handleReply() {
     if (!replyBody.trim()) return;
     setLoading(true);
-    await fetch(`/api/v1/tickets/${ticket.id}/comments`, {
+    setReplyError("");
+    const res = await fetch(`/api/v1/tickets/${ticket.id}/comments`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ body: replyBody }),
+      body: JSON.stringify({ body: replyBody, replyAs }),
     });
+    setLoading(false);
+    if (!res.ok) {
+      const data = await res.json();
+      setReplyError(data.error ?? "Failed to send reply");
+      return;
+    }
     setReplyBody("");
     setComposeMode(null);
-    setLoading(false);
     await refreshTicket();
   }
+
+  const canReplyAsContact = !!ticket.contact?.user;
 
   async function handleInternalNote() {
     if (!noteBody.trim()) return;
@@ -231,10 +242,45 @@ export function TicketDetailClient({
           {composeMode === "reply" && (
             <div className="rounded-lg border-2 border-blue-200 bg-blue-50 p-4">
               <p className="mb-2 text-xs font-medium text-blue-700">Reply to Customer</p>
+              <div className="mb-3 flex flex-wrap gap-4 text-sm">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="replyAs"
+                    checked={replyAs === "agent"}
+                    onChange={() => setReplyAs("agent")}
+                  />
+                  As agent ({metadata.currentUserName ?? "you"})
+                </label>
+                {ticket.contact && (
+                  <label className={`flex items-center gap-2 ${!canReplyAsContact ? "opacity-50" : ""}`}>
+                    <input
+                      type="radio"
+                      name="replyAs"
+                      checked={replyAs === "contact"}
+                      onChange={() => canReplyAsContact && setReplyAs("contact")}
+                      disabled={!canReplyAsContact}
+                    />
+                    As customer ({ticket.contact.name})
+                  </label>
+                )}
+              </div>
+              {!canReplyAsContact && ticket.contact && (
+                <p className="mb-2 text-xs text-amber-700">
+                  Enable portal access for {ticket.contact.name} in{" "}
+                  <Link href={`/app/customers/${ticket.organisation.id}`} className="underline">
+                    Customers
+                  </Link>{" "}
+                  to reply on their behalf.
+                </p>
+              )}
               <Textarea value={replyBody} onChange={(e) => setReplyBody(e.target.value)} placeholder="Type your reply..." />
+              {replyError && <p className="mt-2 text-xs text-red-600">{replyError}</p>}
               <div className="mt-2 flex gap-2">
-                <Button variant="reply" size="sm" onClick={handleReply} disabled={loading}>Send Reply</Button>
-                <Button variant="ghost" size="sm" onClick={() => setComposeMode(null)}>Cancel</Button>
+                <Button variant="reply" size="sm" onClick={handleReply} disabled={loading}>
+                  {replyAs === "contact" ? `Send as ${ticket.contact?.name}` : "Send Reply"}
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => { setComposeMode(null); setReplyError(""); }}>Cancel</Button>
               </div>
             </div>
           )}
@@ -271,11 +317,17 @@ export function TicketDetailClient({
               {filteredTimeline.length === 0 && <p className="text-sm text-slate-500">No activity yet.</p>}
               {filteredTimeline.map((item) => {
                 if (item.type === "comment") {
+                  const displayName = item.data.onBehalfOfContact
+                    ? item.data.onBehalfOfContact.name
+                    : item.data.author.name;
                   return (
                     <div key={`c-${item.data.id}`} className="rounded-lg border-l-4 border-blue-500 bg-blue-50/50 p-3">
                       <div className="flex items-center gap-2 text-xs text-blue-700">
                         <MessageSquare className="h-3 w-3" />
-                        <span className="font-medium">{item.data.author.name}</span>
+                        <span className="font-medium">{displayName}</span>
+                        {item.data.onBehalfOfContact && (
+                          <span className="text-blue-500">(via agent)</span>
+                        )}
                         <span>{formatDate(item.data.createdAt)}</span>
                       </div>
                       <p className="mt-2 text-sm text-slate-700 whitespace-pre-wrap">{item.data.body}</p>

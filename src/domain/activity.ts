@@ -32,6 +32,8 @@ export function getActivityLabel(eventType: string, payload: Record<string, unkn
       return `Reassigned to ${payload.assignee}`;
     case "comment.added":
       return "Agent replied";
+    case "comment.added_on_behalf":
+      return `Reply posted on behalf of ${payload.contactName ?? "customer"}`;
     case "customer.replied":
       return "Customer replied";
     case "internal_note.added":

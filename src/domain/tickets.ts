@@ -64,7 +64,7 @@ export async function getTicket(tenantId: string, id: string) {
     where: { id, tenantId, deletedAt: null },
     include: {
       organisation: true,
-      contact: true,
+      contact: { include: { user: { select: { id: true, name: true, email: true } } } },
       assignee: true,
       team: true,
       status: true,
@@ -74,7 +74,10 @@ export async function getTicket(tenantId: string, id: string) {
       subcategory: true,
       asset: true,
       createdBy: true,
-      comments: { include: { author: true }, orderBy: { createdAt: "asc" } },
+      comments: {
+        include: { author: true, onBehalfOfContact: true },
+        orderBy: { createdAt: "asc" },
+      },
       internalNotes: { include: { author: true }, orderBy: { createdAt: "asc" } },
       attachments: { include: { uploadedBy: true }, orderBy: { createdAt: "asc" } },
       activities: { include: { actor: true }, orderBy: { createdAt: "asc" } },

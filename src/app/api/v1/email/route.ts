@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { requirePermission } from "@/lib/permissions";
 import { listMailboxes, ingestInboundEmail } from "@/domain/email-to-ticket";
+import { createEmailMailbox } from "@/domain/settings";
 
 export async function GET() {
   const session = await auth();
@@ -27,6 +28,11 @@ export async function POST(request: Request) {
       body: body.body,
     });
     return NextResponse.json(result, { status: 201 });
+  }
+
+  if (body.name && body.emailAddress) {
+    const mailbox = await createEmailMailbox(session.user.tenantId, body);
+    return NextResponse.json(mailbox, { status: 201 });
   }
 
   return NextResponse.json({ error: "Unknown action" }, { status: 400 });

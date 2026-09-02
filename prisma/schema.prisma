@@ -184,6 +184,7 @@ model Contact {
   organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
   user         User?
   tickets      Ticket[]
+  ticketComments TicketComment[]
 
   @@unique([tenantId, email])
   @@index([organisationId])
@@ -665,15 +666,18 @@ model Ticket {
 }
 
 model TicketComment {
-  id        String   @id @default(cuid())
-  ticketId  String
-  authorId  String
-  body      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                  String   @id @default(cuid())
+  ticketId            String
+  authorId            String
+  body                String
+  onBehalfOfContactId String?
+  actingAgentId       String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
-  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  author User   @relation(fields: [authorId], references: [id])
+  ticket            Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  author            User     @relation(fields: [authorId], references: [id])
+  onBehalfOfContact Contact? @relation(fields: [onBehalfOfContactId], references: [id])
 
   @@index([ticketId, createdAt])
 }
