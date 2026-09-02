@@ -52,7 +52,7 @@ export function PortalPublicShell({
       {!embed && (
         <footer className="border-t border-slate-200 bg-white py-6 text-center text-xs text-slate-400">
           Powered by{" "}
-          <span className="font-medium text-slate-500">OurCloud Service Desk</span>
+          <span className="font-medium text-slate-500">HYOZA System</span>
         </footer>
       )}
     </div>

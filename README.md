@@ -1,6 +1,8 @@
-# OurCloud Service Desk
+# HYOZA System
 
 A web-based IT Service Management (ITSM) platform for service desk technicians, customers, managers, and administrators.
+
+**Repository:** `hyoza-system` (display name: HYOZA System)
 
 **Design principle:** *Familiar first. Powerful second.*
 

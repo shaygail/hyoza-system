@@ -16,7 +16,7 @@ export default function LoginPage() {
           <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-ourcloud-600 text-white">
             <Cloud className="h-7 w-7" />
           </div>
-          <h1 className="text-xl font-semibold text-slate-900">OurCloud Service Desk</h1>
+          <h1 className="text-xl font-semibold text-slate-900">HYOZA System</h1>
           <p className="mt-1 text-sm text-slate-500">Sign in to the agent console</p>
         </div>
 

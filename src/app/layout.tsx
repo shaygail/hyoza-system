@@ -6,8 +6,8 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
 export const metadata: Metadata = {
-  title: "OurCloud Service Desk",
-  description: "IT Service Management platform by OurCloud",
+  title: "HYOZA System",
+  description: "IT Service Management platform",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

@@ -40,7 +40,7 @@ export function Sidebar() {
           <Cloud className="h-5 w-5" />
         </div>
         <div>
-          <div className="text-sm font-semibold text-slate-900">OurCloud</div>
+          <div className="text-sm font-semibold text-slate-900">HYOZA</div>
           <div className="text-xs text-slate-500">Service Desk</div>
         </div>
       </div>

@@ -101,7 +101,7 @@ async function main() {
     where: { slug: "ourcloud" },
     update: {},
     create: {
-      name: "OurCloud",
+      name: "HYOZA",
       slug: "ourcloud",
       settings: JSON.stringify({ timezone: "Europe/London" }),
     },

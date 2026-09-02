@@ -15,7 +15,7 @@ export default async function PortalLayout({ children }: { children: React.React
   const contact = await getCustomerContact(session.user.id);
   const portalConfig = await getPortalConfigForUser(session.user.tenantId);
 
-  const orgName = contact?.organisation.name ?? portalConfig?.tenantName ?? "OurCloud";
+  const orgName = contact?.organisation.name ?? portalConfig?.tenantName ?? "HYOZA";
   const portalTitle = portalConfig?.portalTitle ?? "Support";
   const primary = portalConfig?.branding.primaryColor ?? "#0891b2";
   const logoUrl = portalConfig?.branding.logoUrl;
@@ -54,7 +54,7 @@ export default async function PortalLayout({ children }: { children: React.React
       </header>
       <main className="mx-auto max-w-4xl p-6">{children}</main>
       <footer className="border-t border-slate-200 bg-white py-4 text-center text-xs text-slate-400">
-        Powered by <span className="font-medium text-slate-500">OurCloud Service Desk</span>
+        Powered by <span className="font-medium text-slate-500">HYOZA System</span>
       </footer>
     </div>
   );
