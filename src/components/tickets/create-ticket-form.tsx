@@ -1,17 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input, Textarea, Select, Label } from "@/components/ui/input";
+import { SearchSelect } from "@/components/ui/search-select";
 
 interface Metadata {
   priorities: { id: string; name: string }[];
   ticketTypes: { id: string; name: string }[];
-  users: { id: string; name: string }[];
-  teams: { id: string; name: string }[];
+  technicians: { id: string; name: string; email: string }[];
+  routingCategories: { id: string; name: string; code: string }[];
   organisations: { id: string; name: string; contacts: { id: string; name: string }[] }[];
 }
+
+const TEAM_BY_CATEGORY: Record<string, string> = {
+  accounts: "Accounts",
+  support: "Support",
+  admin: "Admin",
+};
 
 export function CreateTicketForm({ metadata }: { metadata: Metadata }) {
   const router = useRouter();
@@ -24,11 +31,23 @@ export function CreateTicketForm({ metadata }: { metadata: Metadata }) {
     contactId: "",
     priorityId: metadata.priorities.find((p) => p.name === "Medium")?.id ?? metadata.priorities[0]?.id,
     ticketTypeId: metadata.ticketTypes[0]?.id,
-    assigneeId: "",
-    teamId: metadata.teams[0]?.id ?? "",
+    assigneeId: null as string | null,
+    categoryId: metadata.routingCategories.find((c) => c.code === "support")?.id ?? "",
   });
 
   const selectedOrg = metadata.organisations.find((o) => o.id === orgId);
+  const selectedCategory = metadata.routingCategories.find((c) => c.id === form.categoryId);
+  const teamName = selectedCategory ? TEAM_BY_CATEGORY[selectedCategory.code] ?? "—" : "—";
+
+  const technicianOptions = useMemo(
+    () =>
+      metadata.technicians.map((technician) => ({
+        id: technician.id,
+        label: technician.name,
+        hint: technician.email,
+      })),
+    [metadata.technicians]
+  );
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -43,7 +62,7 @@ export function CreateTicketForm({ metadata }: { metadata: Metadata }) {
         organisationId: orgId,
         assigneeId: form.assigneeId || undefined,
         contactId: form.contactId || undefined,
-        teamId: form.teamId || undefined,
+        categoryId: form.categoryId || undefined,
       }),
     });
 
@@ -102,6 +121,26 @@ export function CreateTicketForm({ metadata }: { metadata: Metadata }) {
         </div>
       </div>
 
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <Label>Category *</Label>
+          <Select
+            value={form.categoryId}
+            onChange={(e) => setForm({ ...form, categoryId: e.target.value })}
+            required
+          >
+            <option value="">Select category...</option>
+            {metadata.routingCategories.map((category) => (
+              <option key={category.id} value={category.id}>{category.name}</option>
+            ))}
+          </Select>
+        </div>
+        <div>
+          <Label>Team</Label>
+          <Input readOnly value={teamName} className="bg-slate-50 text-slate-600" />
+        </div>
+      </div>
+
       <div>
         <Label>Subject *</Label>
         <Input value={form.subject} onChange={(e) => setForm({ ...form, subject: e.target.value })} required />
@@ -112,24 +151,14 @@ export function CreateTicketForm({ metadata }: { metadata: Metadata }) {
         <Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} required />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <Label>Assignee</Label>
-          <Select value={form.assigneeId} onChange={(e) => setForm({ ...form, assigneeId: e.target.value })}>
-            <option value="">Unassigned</option>
-            {metadata.users.map((u) => (
-              <option key={u.id} value={u.id}>{u.name}</option>
-            ))}
-          </Select>
-        </div>
-        <div>
-          <Label>Team</Label>
-          <Select value={form.teamId} onChange={(e) => setForm({ ...form, teamId: e.target.value })}>
-            {metadata.teams.map((t) => (
-              <option key={t.id} value={t.id}>{t.name}</option>
-            ))}
-          </Select>
-        </div>
+      <div>
+        <Label>Assignee</Label>
+        <SearchSelect
+          options={technicianOptions}
+          value={form.assigneeId}
+          onChange={(assigneeId) => setForm({ ...form, assigneeId })}
+          placeholder="Search technicians..."
+        />
       </div>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
