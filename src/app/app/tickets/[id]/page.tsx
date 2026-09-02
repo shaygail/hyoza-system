@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { getTicket, getAvailableTransitions } from "@/domain/tickets";
 import { prisma } from "@/lib/prisma";
+import { serializeTicketForClient } from "@/lib/serialize-ticket";
 import { TicketDetailClient } from "@/components/tickets/ticket-detail";
 
 export default async function TicketDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -18,18 +19,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
     prisma.priority.findMany({ where: { tenantId: session.user.tenantId }, select: { id: true, name: true } }),
   ]);
 
-  const serialized = {
-    ...ticket,
-    resolutionDueAt: ticket.resolutionDueAt?.toISOString() ?? null,
-    comments: ticket.comments.map((c) => ({
-      ...c,
-      createdAt: c.createdAt.toISOString(),
-      onBehalfOfContact: c.onBehalfOfContact,
-    })),
-    internalNotes: ticket.internalNotes.map((n) => ({ ...n, createdAt: n.createdAt.toISOString() })),
-    attachments: ticket.attachments.map((a) => ({ ...a, createdAt: a.createdAt.toISOString() })),
-    activities: ticket.activities.map((a) => ({ ...a, createdAt: a.createdAt.toISOString() })),
-  };
+  const serialized = serializeTicketForClient(ticket);
 
   return (
     <TicketDetailClient

@@ -13,7 +13,11 @@ export default async function PortalTicketPage({ params }: { params: Promise<{ i
 
   const serialized = {
     ...ticket,
-    comments: ticket.comments.map((c) => ({ ...c, createdAt: c.createdAt.toISOString() })),
+    comments: ticket.comments.map((c) => ({
+      ...c,
+      createdAt: c.createdAt.toISOString(),
+      onBehalfOfContact: c.onBehalfOfContact,
+    })),
   };
 
   return <PortalTicketDetail ticket={serialized as Parameters<typeof PortalTicketDetail>[0]["ticket"]} />;

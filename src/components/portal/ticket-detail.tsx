@@ -15,7 +15,13 @@ interface PortalTicket {
   description: string;
   status: { name: string; color: string };
   priority: { name: string; color: string };
-  comments: { id: string; body: string; createdAt: string; author: { name: string } }[];
+  comments: {
+    id: string;
+    body: string;
+    createdAt: string;
+    author: { name: string };
+    onBehalfOfContact?: { name: string } | null;
+  }[];
 }
 
 export function PortalTicketDetail({ ticket: initial }: { ticket: PortalTicket }) {
@@ -23,20 +29,30 @@ export function PortalTicketDetail({ ticket: initial }: { ticket: PortalTicket }
   const [ticket, setTicket] = useState(initial);
   const [reply, setReply] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   async function handleReply() {
     if (!reply.trim()) return;
     setLoading(true);
-    await fetch(`/api/v1/portal/tickets/${ticket.id}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ body: reply }),
-    });
-    setReply("");
-    setLoading(false);
-    const res = await fetch(`/api/v1/portal/tickets/${ticket.id}`);
-    setTicket(await res.json());
-    router.refresh();
+    setError("");
+    try {
+      const res = await fetch(`/api/v1/portal/tickets/${ticket.id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ body: reply }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data.error ?? "Failed to send reply");
+        return;
+      }
+      setReply("");
+      const refresh = await fetch(`/api/v1/portal/tickets/${ticket.id}`);
+      if (refresh.ok) setTicket(await refresh.json());
+      router.refresh();
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -55,16 +71,27 @@ export function PortalTicketDetail({ ticket: initial }: { ticket: PortalTicket }
       <div className="rounded-xl border border-slate-200 bg-white p-4">
         <h2 className="mb-3 font-medium">Conversation</h2>
         <div className="space-y-3">
-          {ticket.comments.map((c) => (
-            <div key={c.id} className="rounded-lg border-l-4 border-blue-400 bg-blue-50 p-3 text-sm">
-              <div className="text-xs text-blue-600">{c.author.name} · {formatDate(c.createdAt)}</div>
-              <p className="mt-1 whitespace-pre-wrap">{c.body}</p>
-            </div>
-          ))}
+          {ticket.comments.map((c) => {
+            const name = c.onBehalfOfContact?.name ?? c.author.name;
+            return (
+              <div key={c.id} className="rounded-lg border-l-4 border-blue-400 bg-blue-50 p-3 text-sm">
+                <div className="text-xs text-blue-600">
+                  {name}
+                  {c.onBehalfOfContact && <span className="text-blue-400"> · via support</span>}
+                  {" · "}
+                  {formatDate(c.createdAt)}
+                </div>
+                <p className="mt-1 whitespace-pre-wrap">{c.body}</p>
+              </div>
+            );
+          })}
         </div>
         <div className="mt-4 space-y-2">
           <Textarea value={reply} onChange={(e) => setReply(e.target.value)} placeholder="Type your reply..." />
-          <Button onClick={handleReply} disabled={loading}>Send Reply</Button>
+          {error && <p className="text-sm text-red-600">{error}</p>}
+          <Button onClick={handleReply} disabled={loading}>
+            {loading ? "Sending..." : "Send Reply"}
+          </Button>
         </div>
       </div>
     </div>

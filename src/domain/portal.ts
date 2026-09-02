@@ -40,7 +40,10 @@ export async function getCustomerTicket(userId: string, ticketId: string) {
       status: true,
       priority: true,
       ticketType: true,
-      comments: { include: { author: true }, orderBy: { createdAt: "asc" } },
+      comments: {
+        include: { author: true, onBehalfOfContact: true },
+        orderBy: { createdAt: "asc" },
+      },
       activities: {
         where: { visibility: "customer" },
         orderBy: { createdAt: "asc" },

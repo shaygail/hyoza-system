@@ -49,16 +49,12 @@ export async function addCommentAsContact(
     include: { contact: { include: { user: true } } },
   });
   if (!ticket) throw new Error("Ticket not found");
-  if (!ticket.contact) throw new Error("Ticket has no contact");
+  if (!ticket.contact) throw new Error("Ticket has no contact — assign a contact before replying as customer.");
 
   const contactUser = ticket.contact.user;
-  if (!contactUser) {
-    throw new Error(
-      "Contact does not have portal access. Enable it in Customers → contact → Portal Access."
-    );
-  }
+  const authorId = contactUser?.id ?? agentId;
 
-  return addComment(ticketId, contactUser.id, body, {
+  return addComment(ticketId, authorId, body, {
     actingAgentId: agentId,
     onBehalfOfContactId: ticket.contact.id,
   });

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/utils";
-import { getActivityLabel } from "@/domain/activity";
+import { getActivityLabel } from "@/lib/activity-labels";
 import Link from "next/link";
 import { Paperclip, MessageSquare, Lock, Clock, Columns3 } from "lucide-react";
 
@@ -79,23 +79,27 @@ export function TicketDetailClient({
     if (!replyBody.trim()) return;
     setLoading(true);
     setReplyError("");
-    const res = await fetch(`/api/v1/tickets/${ticket.id}/comments`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ body: replyBody, replyAs }),
-    });
-    setLoading(false);
-    if (!res.ok) {
-      const data = await res.json();
-      setReplyError(data.error ?? "Failed to send reply");
-      return;
+    try {
+      const res = await fetch(`/api/v1/tickets/${ticket.id}/comments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ body: replyBody, replyAs }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setReplyError(data.error ?? "Failed to send reply");
+        return;
+      }
+      setReplyBody("");
+      setReplyAs("agent");
+      setComposeMode(null);
+      await refreshTicket();
+    } finally {
+      setLoading(false);
     }
-    setReplyBody("");
-    setComposeMode(null);
-    await refreshTicket();
   }
 
-  const canReplyAsContact = !!ticket.contact?.user;
+  const canReplyAsContact = !!ticket.contact;
 
   async function handleInternalNote() {
     if (!noteBody.trim()) return;
@@ -211,7 +215,7 @@ export function TicketDetailClient({
             </div>
 
             <div className="flex flex-wrap gap-2 border-b border-slate-200 px-6 py-3 bg-slate-50">
-              <Button variant="reply" size="sm" onClick={() => setComposeMode(composeMode === "reply" ? null : "reply")}>
+              <Button variant="reply" size="sm" onClick={() => { setComposeMode(composeMode === "reply" ? null : "reply"); setReplyError(""); }}>
                 <MessageSquare className="mr-2 h-4 w-4" />Reply
               </Button>
               <Button variant="internal" size="sm" onClick={() => setComposeMode(composeMode === "note" ? null : "note")}>
@@ -253,25 +257,25 @@ export function TicketDetailClient({
                   As agent ({metadata.currentUserName ?? "you"})
                 </label>
                 {ticket.contact && (
-                  <label className={`flex items-center gap-2 ${!canReplyAsContact ? "opacity-50" : ""}`}>
+                  <label className="flex items-center gap-2">
                     <input
                       type="radio"
                       name="replyAs"
                       checked={replyAs === "contact"}
-                      onChange={() => canReplyAsContact && setReplyAs("contact")}
-                      disabled={!canReplyAsContact}
+                      onChange={() => setReplyAs("contact")}
                     />
                     As customer ({ticket.contact.name})
                   </label>
                 )}
               </div>
-              {!canReplyAsContact && ticket.contact && (
+              {replyAs === "contact" && !ticket.contact?.user && ticket.contact && (
                 <p className="mb-2 text-xs text-amber-700">
-                  Enable portal access for {ticket.contact.name} in{" "}
+                  This contact does not have a portal login yet — the reply will still appear under their name.
+                  Enable portal access in{" "}
                   <Link href={`/app/customers/${ticket.organisation.id}`} className="underline">
                     Customers
                   </Link>{" "}
-                  to reply on their behalf.
+                  so they can see it when they sign in.
                 </p>
               )}
               <Textarea value={replyBody} onChange={(e) => setReplyBody(e.target.value)} placeholder="Type your reply..." />
