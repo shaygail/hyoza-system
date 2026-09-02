@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { createTicket } from "@/domain/tickets";
 import { addComment } from "@/domain/comments";
 import { notifyCustomerReply } from "@/domain/notifications";
+import { createGuestAccess } from "@/domain/guest-portal";
+import { guestTicketUrl, sendTicketCreatedEmail } from "@/domain/customer-email";
 
 export async function getCustomerContact(userId: string) {
   const user = await prisma.user.findUnique({
@@ -61,7 +63,7 @@ export async function createCustomerTicket(
   const contact = await getCustomerContact(userId);
   if (!contact) throw new Error("No contact linked to user");
 
-  return createTicket({
+  const ticket = await createTicket({
     tenantId,
     createdById: userId,
     subject: data.subject,
@@ -72,6 +74,17 @@ export async function createCustomerTicket(
     ticketTypeId: data.ticketTypeId,
     source: "portal",
   });
+
+  const access = await createGuestAccess(ticket.id, contact.email);
+  await sendTicketCreatedEmail({
+    to: contact.email,
+    name: contact.name,
+    ticketNumber: ticket.ticketNumber,
+    subject: ticket.subject,
+    accessUrl: guestTicketUrl(access.token),
+  });
+
+  return ticket;
 }
 
 export async function addCustomerReply(ticketId: string, userId: string, body: string) {

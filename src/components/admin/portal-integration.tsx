@@ -1,98 +1,91 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
-function CopyButton({ text, label }: { text: string; label: string }) {
+type Props = {
+  baseUrl: string;
+};
+
+function CopyField({ label, value, hint }: { label: string; value: string; hint?: string }) {
   const [copied, setCopied] = useState(false);
 
   async function copy() {
-    await navigator.clipboard.writeText(text);
+    await navigator.clipboard.writeText(value);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }
 
   return (
-    <Button variant="secondary" size="sm" onClick={copy}>
-      {copied ? "Copied!" : label}
-    </Button>
+    <div className="space-y-1.5">
+      <label className="text-sm font-medium text-slate-700">{label}</label>
+      {hint && <p className="text-xs text-slate-500">{hint}</p>}
+      <div className="flex gap-2">
+        <Input readOnly value={value} className="font-mono text-xs" />
+        <Button type="button" variant="secondary" size="sm" onClick={copy}>
+          {copied ? "Copied" : "Copy"}
+        </Button>
+      </div>
+    </div>
   );
 }
 
-export function PortalIntegrationPanel({
-  baseUrl,
-  portalTitle,
-  welcomeMessage,
-  onWelcomeChange,
-}: {
-  baseUrl: string;
-  portalTitle: string;
-  welcomeMessage: string;
-  onWelcomeChange: (v: string) => void;
-}) {
+export function PortalIntegrationPanel({ baseUrl }: Props) {
   const supportUrl = `${baseUrl}/support`;
-  const loginUrl = `${baseUrl}/portal/login`;
+  const submitUrl = `${baseUrl}/support/submit`;
   const embedUrl = `${baseUrl}/embed/support`;
 
-  const linkHtml = `<a href="${supportUrl}" style="display:inline-block;padding:10px 20px;background:#4f46e5;color:#fff;border-radius:8px;text-decoration:none;font-family:sans-serif;font-size:14px;">${portalTitle}</a>`;
-
-  const iframeHtml = `<iframe src="${embedUrl}" width="100%" height="320" frameborder="0" style="border:1px solid #e2e8f0;border-radius:12px;" title="Customer Support"></iframe>`;
+  const embedHtml = `<iframe
+  src="${embedUrl}"
+  title="Support"
+  width="100%"
+  height="520"
+  style="border:0;border-radius:12px;max-width:720px;"
+  loading="lazy"
+></iframe>`;
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-5 space-y-5">
+    <div className="space-y-6 rounded-xl border border-slate-200 bg-white p-6">
       <div>
-        <h3 className="font-medium text-slate-900">Website integration</h3>
-        <p className="mt-1 text-sm text-slate-500">
-          Link these URLs from your website, or embed the support widget in a page.
+        <h2 className="text-lg font-semibold text-slate-900">Customer portal (no sign-in)</h2>
+        <p className="mt-1 text-sm text-slate-600">
+          Customers submit requests without an account. They receive email with a secure link to view
+          updates, replies, and status changes.
         </p>
       </div>
 
-      <div>
-        <label className="block text-sm font-medium text-slate-700">Welcome message</label>
-        <textarea
-          value={welcomeMessage}
-          onChange={(e) => onWelcomeChange(e.target.value)}
-          rows={3}
-          className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-          placeholder="Shown on the public support page"
-        />
-      </div>
+      <CopyField
+        label="Support home"
+        value={supportUrl}
+        hint="Link from your website navigation or footer."
+      />
+      <CopyField
+        label="Submit request (direct)"
+        value={submitUrl}
+        hint="Deep link straight to the request form."
+      />
+      <CopyField
+        label="Embeddable widget URL"
+        value={embedUrl}
+        hint="Lightweight page for iframes on your site."
+      />
+      <CopyField
+        label="Embed HTML"
+        value={embedHtml}
+        hint="Paste into your CMS or site builder."
+      />
 
-      <div className="space-y-3">
-        <div className="rounded-lg bg-slate-50 p-3">
-          <p className="text-xs font-medium text-slate-600">Support home (link from your website)</p>
-          <code className="mt-1 block break-all text-sm text-slate-800">{supportUrl}</code>
-          <div className="mt-2">
-            <CopyButton text={supportUrl} label="Copy URL" />
-          </div>
-        </div>
-
-        <div className="rounded-lg bg-slate-50 p-3">
-          <p className="text-xs font-medium text-slate-600">Customer sign-in</p>
-          <code className="mt-1 block break-all text-sm text-slate-800">{loginUrl}</code>
-          <div className="mt-2">
-            <CopyButton text={loginUrl} label="Copy URL" />
-          </div>
-        </div>
-
-        <div className="rounded-lg bg-slate-50 p-3">
-          <p className="text-xs font-medium text-slate-600">Website button (HTML)</p>
-          <pre className="mt-1 overflow-x-auto rounded bg-white p-2 text-xs text-slate-700 border border-slate-200">{linkHtml}</pre>
-          <div className="mt-2">
-            <CopyButton text={linkHtml} label="Copy HTML" />
-          </div>
-        </div>
-
-        <div className="rounded-lg bg-slate-50 p-3">
-          <p className="text-xs font-medium text-slate-600">Embed widget (iframe)</p>
-          <pre className="mt-1 overflow-x-auto rounded bg-white p-2 text-xs text-slate-700 border border-slate-200">{iframeHtml}</pre>
-          <div className="mt-2 flex gap-2">
-            <CopyButton text={iframeHtml} label="Copy embed code" />
-            <a href={embedUrl} target="_blank" rel="noopener noreferrer">
-              <Button variant="ghost" size="sm">Preview widget</Button>
-            </a>
-          </div>
-        </div>
+      <div className="rounded-lg border border-slate-100 bg-slate-50 p-4 text-sm text-slate-600">
+        <p className="font-medium text-slate-800">Email notifications</p>
+        <ul className="mt-2 list-inside list-disc space-y-1">
+          <li>Confirmation when a request is created (includes view link)</li>
+          <li>Notification when your team replies</li>
+          <li>Notification when status changes</li>
+        </ul>
+        <p className="mt-2 text-xs text-slate-500">
+          In development, emails are logged to the server console. Configure SMTP in production.
+        </p>
       </div>
     </div>
   );

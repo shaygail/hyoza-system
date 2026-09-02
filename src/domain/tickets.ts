@@ -312,6 +312,9 @@ export async function transitionTicket(
     await logActivity({ ticketId, actorId, eventType: "ticket.reopened", visibility: "customer" });
   }
 
+  const { notifyCustomerOfStatusChange } = await import("@/domain/guest-portal");
+  await notifyCustomerOfStatusChange(ticketId, transition.toStatus.name);
+
   return updated;
 }
 

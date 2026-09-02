@@ -70,14 +70,7 @@ export function SystemSettingsPanel() {
       {error && <p className="text-sm text-red-600">{error}</p>}
       {message && <p className="text-sm text-green-600">{message}</p>}
 
-      {baseUrl && (
-        <PortalIntegrationPanel
-          baseUrl={baseUrl}
-          portalTitle={portalTitle}
-          welcomeMessage={welcomeMessage}
-          onWelcomeChange={setWelcomeMessage}
-        />
-      )}
+      {baseUrl && <PortalIntegrationPanel baseUrl={baseUrl} />}
 
       <div className="rounded-xl border border-slate-200 bg-white p-5 space-y-4">
         <h3 className="font-medium text-slate-900">Branding</h3>

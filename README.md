@@ -43,7 +43,7 @@ A web-based IT Service Management (ITSM) platform for service desk technicians, 
 - Admin-defined custom fields
 - Problem and Change ticket types
 - Custom roles with configurable permissions
-- **Customer portal** — public support page, customer login, embeddable widget for your website
+- **Customer portal** — passwordless public support (submit tickets, email magic links for updates)
 
 ## Tech stack
 
@@ -90,15 +90,25 @@ To process inbound emails and SLA escalations:
 npm run email:worker
 ```
 
-### Customer portal (link from your website)
+### Customer portal (no sign-in)
+
+Customers submit support requests without creating an account. After submission they receive an email with a secure link to view the ticket, reply, and see status updates. Your team is notified in the agent console as usual.
 
 | Page | URL |
 |------|-----|
 | Support home | `http://127.0.0.1:4317/support` |
-| Customer sign-in | `http://127.0.0.1:4317/portal/login` |
+| Submit request | `http://127.0.0.1:4317/support/submit` |
 | Embed widget | `http://127.0.0.1:4317/embed/support` |
 
 Copy integration links and embed code from **Administration → System**.
+
+**Email notifications** (logged to the server console in development):
+
+- Ticket created — confirmation with magic link
+- Agent reply — preview and link to conversation
+- Status change — updated status with link
+
+Set `PORTAL_BASE_URL` in production so email links use your public domain.
 
 ### Demo accounts
 
@@ -106,7 +116,7 @@ Copy integration links and embed code from **Administration → System**.
 |-------|----------|------|
 | admin@ourcloud.local | admin123 | Administrator |
 | agent@ourcloud.local | agent123 | Agent |
-| john.smith@abc-limited.example | customer123 | Customer (portal) |
+| john.smith@abc-limited.example | customer123 | Customer (legacy portal login) |
 
 ## Project structure
 

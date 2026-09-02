@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { getPublicPortalConfig } from "@/domain/portal-public";
 import { PortalPublicShell } from "@/components/portal/portal-public-shell";
+import { PublicSubmitTicketForm } from "@/components/portal/public-submit-form";
 import { Button } from "@/components/ui/button";
-import { BookOpen, LogIn, MessageSquarePlus } from "lucide-react";
+import { BookOpen, MessageSquarePlus } from "lucide-react";
 
 export default async function SupportPage() {
   const config = await getPublicPortalConfig();
@@ -23,20 +24,17 @@ export default async function SupportPage() {
           {config.tenantName} {config.portalTitle}
         </h1>
         <p className="mt-4 max-w-2xl text-lg text-slate-600">{config.welcomeMessage}</p>
-        <div className="mt-8 flex flex-wrap gap-3">
-          <Link href="/portal/login">
+        <div className="mt-8">
+          <Link href="/support/submit">
             <Button style={{ backgroundColor: primary }} className="text-white hover:opacity-90">
-              <LogIn className="mr-2 h-4 w-4" />
-              Sign in to your account
-            </Button>
-          </Link>
-          <Link href="/portal/login?returnTo=/portal/tickets/new">
-            <Button variant="secondary">
               <MessageSquarePlus className="mr-2 h-4 w-4" />
-              Submit a request
+              Submit a support request
             </Button>
           </Link>
         </div>
+        <p className="mt-4 text-sm text-slate-500">
+          No sign-in required. We&apos;ll email you a link to track your ticket and notify you of updates.
+        </p>
       </section>
 
       {config.articles.length > 0 && (
@@ -49,25 +47,21 @@ export default async function SupportPage() {
             {config.articles.map((article) => (
               <div
                 key={article.id}
-                className="rounded-xl border border-slate-200 bg-white p-5 hover:border-slate-300 transition-colors"
+                className="rounded-xl border border-slate-200 bg-white p-5"
               >
                 <h3 className="font-medium text-slate-900">{article.title}</h3>
                 <p className="mt-2 line-clamp-2 text-sm text-slate-500">
                   {article.body.slice(0, 160)}
                   {article.body.length > 160 ? "…" : ""}
                 </p>
-                <p className="mt-3 text-xs text-slate-400">Sign in to view full articles</p>
               </div>
             ))}
           </div>
         </section>
       )}
 
-      <section className="mt-8 rounded-xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-sm text-slate-500">
-        <p>Already have an account?</p>
-        <Link href="/portal/login" className="mt-1 inline-block font-medium hover:underline" style={{ color: primary }}>
-          Sign in to view your tickets →
-        </Link>
+      <section className="mt-8" id="submit">
+        <PublicSubmitTicketForm primaryColor={primary} />
       </section>
     </PortalPublicShell>
   );

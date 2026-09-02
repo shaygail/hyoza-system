@@ -99,7 +99,6 @@ export function TicketDetailClient({
     }
   }
 
-  const canReplyAsContact = !!ticket.contact;
 
   async function handleInternalNote() {
     if (!noteBody.trim()) return;

@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { Cloud } from "lucide-react";
 
 interface PortalConfig {
@@ -45,15 +44,6 @@ export function PortalPublicShell({
               {!embed && <div className="text-xs text-slate-500">Customer support portal</div>}
             </div>
           </div>
-          {!embed && (
-            <Link
-              href="/portal/login"
-              className="text-sm font-medium hover:underline"
-              style={{ color: primary }}
-            >
-              Sign in
-            </Link>
-          )}
         </div>
       </header>
 

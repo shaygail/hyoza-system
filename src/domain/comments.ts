@@ -36,6 +36,18 @@ export async function addComment(
     visibility: "customer",
   });
 
+  if (!options?.onBehalfOfContactId) {
+    const author = await prisma.user.findUnique({
+      where: { id: authorId },
+      include: { userRoles: { include: { role: true } } },
+    });
+    const isCustomer = author?.userRoles.some((ur) => ur.role.code === "customer");
+    if (!isCustomer) {
+      const { notifyCustomerOfAgentReply } = await import("@/domain/guest-portal");
+      await notifyCustomerOfAgentReply(ticketId, body);
+    }
+  }
+
   return comment;
 }
 

@@ -581,6 +581,19 @@ model InboundEmail {
   @@index([status])
 }
 
+model TicketGuestAccess {
+  id        String   @id @default(cuid())
+  ticketId  String
+  email     String
+  token     String   @unique
+  createdAt DateTime @default(now())
+
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@index([ticketId])
+  @@index([email])
+}
+
 model Notification {
   id        String   @id @default(cuid())
   userId    String
@@ -658,6 +671,7 @@ model Ticket {
   slaPauses        SlaPause[]
   customFieldValues TicketCustomFieldValue[]
   inboundEmails    InboundEmail[]
+  guestAccess      TicketGuestAccess[]
 
   @@unique([tenantId, ticketNumber])
   @@index([tenantId, statusId])
