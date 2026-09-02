@@ -20,6 +20,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
 
   const serialized = {
     ...ticket,
+    resolutionDueAt: ticket.resolutionDueAt?.toISOString() ?? null,
     comments: ticket.comments.map((c) => ({ ...c, createdAt: c.createdAt.toISOString() })),
     internalNotes: ticket.internalNotes.map((n) => ({ ...n, createdAt: n.createdAt.toISOString() })),
     attachments: ticket.attachments.map((a) => ({ ...a, createdAt: a.createdAt.toISOString() })),

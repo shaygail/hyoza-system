@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/utils";
 import { getActivityLabel } from "@/domain/activity";
-import { Paperclip, MessageSquare, Lock } from "lucide-react";
+import { Paperclip, MessageSquare, Lock, Clock } from "lucide-react";
 
 interface TicketData {
   id: string;
@@ -22,6 +22,9 @@ interface TicketData {
   status: { id: string; name: string; color: string; code: string };
   priority: { id: string; name: string; color: string };
   ticketType: { name: string };
+  resolutionDueAt?: string | null;
+  timeEntries?: { id: string; durationMinutes: number; notes: string | null; user: { name: string }; workType: { name: string } | null }[];
+  asset?: { assetTag: string; name: string } | null;
   comments: { id: string; body: string; createdAt: string; author: { name: string } }[];
   internalNotes: { id: string; body: string; createdAt: string; author: { name: string } }[];
   attachments: { id: string; fileName: string; sizeBytes: number; createdAt: string; uploadedBy: { name: string } }[];
@@ -38,6 +41,7 @@ interface Transition {
 interface Metadata {
   users: { id: string; name: string }[];
   priorities: { id: string; name: string }[];
+  workTypes?: { id: string; name: string }[];
 }
 
 type TimelineFilter = "all" | "customer" | "internal" | "system";
@@ -128,6 +132,17 @@ export function TicketDetailClient({
     await refreshTicket();
   }
 
+  async function handleLogTime(minutes: number) {
+    setLoading(true);
+    await fetch("/api/v1/time-entries", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ticketId: ticket.id, durationMinutes: minutes }),
+    });
+    setLoading(false);
+    await refreshTicket();
+  }
+
   async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -189,6 +204,18 @@ export function TicketDetailClient({
             <span className="text-slate-500">Team</span>
             <p className="font-medium">{ticket.team?.name ?? "—"}</p>
           </div>
+          {ticket.resolutionDueAt && (
+            <div>
+              <span className="text-slate-500">SLA Due</span>
+              <p className="font-medium">{formatDate(ticket.resolutionDueAt)}</p>
+            </div>
+          )}
+          {ticket.asset && (
+            <div>
+              <span className="text-slate-500">Asset</span>
+              <p className="font-medium">{ticket.asset.assetTag}</p>
+            </div>
+          )}
         </div>
 
         {transitions.length > 0 && (
@@ -216,6 +243,12 @@ export function TicketDetailClient({
           Attach
           <input type="file" className="hidden" onChange={handleFileUpload} />
         </label>
+        <Button variant="secondary" size="sm" onClick={() => handleLogTime(15)} disabled={loading}>
+          <Clock className="mr-2 h-4 w-4" />Log 15m
+        </Button>
+        <Button variant="secondary" size="sm" onClick={() => handleLogTime(30)} disabled={loading}>
+          Log 30m
+        </Button>
       </div>
 
       {composeMode === "reply" && (
@@ -313,6 +346,24 @@ export function TicketDetailClient({
           </>
         )}
       </div>
+
+      {ticket.timeEntries && ticket.timeEntries.length > 0 && (
+        <div className="rounded-xl border border-slate-200 bg-white p-4">
+          <h2 className="font-medium text-slate-900 mb-2">Time Logged</h2>
+          <ul className="space-y-1 text-sm">
+            {ticket.timeEntries.map((e) => (
+              <li key={e.id} className="text-slate-600">
+                {e.durationMinutes}m — {e.user.name}
+                {e.workType && ` (${e.workType.name})`}
+                {e.notes && ` — ${e.notes}`}
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2 text-xs text-slate-400">
+            Total: {ticket.timeEntries.reduce((s, e) => s + e.durationMinutes, 0)} minutes
+          </p>
+        </div>
+      )}
 
       {ticket.attachments.length > 0 && (
         <div className="rounded-xl border border-slate-200 bg-white p-4">

@@ -2,6 +2,7 @@
 
 import { signIn } from "@/lib/auth";
 import { AuthError } from "next-auth";
+import { prisma } from "@/lib/prisma";
 
 export type LoginState = { error?: string } | null;
 
@@ -13,11 +14,18 @@ export async function loginAction(_prevState: LoginState, formData: FormData): P
     return { error: "Email and password are required." };
   }
 
+  const user = await prisma.user.findFirst({
+    where: { email: email.toLowerCase(), isActive: true },
+    include: { userRoles: { include: { role: true } } },
+  });
+  const isCustomer = user?.userRoles.some((ur) => ur.role.code === "customer");
+  const redirectTo = isCustomer ? "/portal" : "/app/dashboard";
+
   try {
     await signIn("credentials", {
       email,
       password,
-      redirectTo: "/app/dashboard",
+      redirectTo,
     });
   } catch (error) {
     if (error instanceof AuthError) {

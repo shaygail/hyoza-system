@@ -80,6 +80,8 @@ async function main() {
   if (existingUser) {
     console.log("Database already seeded — skipping.");
     logDemoLogins();
+    const { seedPhase1B } = await import("./seed-phase1b");
+    await seedPhase1B();
     return;
   }
 
@@ -339,6 +341,9 @@ async function main() {
 
   console.log("Seed completed.");
   logDemoLogins();
+
+  const { seedPhase1B } = await import("./seed-phase1b");
+  await seedPhase1B();
 }
 
 main()

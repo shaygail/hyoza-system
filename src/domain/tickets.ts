@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/domain/activity";
+import { applySlaToTicket } from "@/domain/sla";
+import { notifyTicketAssigned } from "@/domain/notifications";
 
 export async function generateTicketNumber(tenantId: string): Promise<string> {
   const sequence = await prisma.ticketSequence.upsert({
@@ -68,11 +70,15 @@ export async function getTicket(tenantId: string, id: string) {
       status: true,
       priority: true,
       ticketType: true,
+      category: true,
+      subcategory: true,
+      asset: true,
       createdBy: true,
       comments: { include: { author: true }, orderBy: { createdAt: "asc" } },
       internalNotes: { include: { author: true }, orderBy: { createdAt: "asc" } },
       attachments: { include: { uploadedBy: true }, orderBy: { createdAt: "asc" } },
       activities: { include: { actor: true }, orderBy: { createdAt: "asc" } },
+      timeEntries: { include: { user: true, workType: true }, orderBy: { createdAt: "desc" } },
     },
   });
 }
@@ -88,6 +94,9 @@ export async function createTicket(params: {
   teamId?: string;
   priorityId: string;
   ticketTypeId: string;
+  categoryId?: string;
+  subcategoryId?: string;
+  assetId?: string;
   source?: string;
 }) {
   const defaultStatus = await prisma.workflowStatus.findFirst({
@@ -114,6 +123,9 @@ export async function createTicket(params: {
       statusId: defaultStatus.id,
       priorityId: params.priorityId,
       ticketTypeId: params.ticketTypeId,
+      categoryId: params.categoryId,
+      subcategoryId: params.subcategoryId,
+      assetId: params.assetId,
       source: params.source ?? "agent",
       createdById: params.createdById,
     },
@@ -142,7 +154,10 @@ export async function createTicket(params: {
       payload: { assignee: assignee?.name },
       visibility: "customer",
     });
+    await notifyTicketAssigned(ticket.id, params.assigneeId, ticket.ticketNumber, ticket.subject);
   }
+
+  await applySlaToTicket(params.tenantId, ticket.id, params.priorityId);
 
   return ticket;
 }
@@ -158,6 +173,8 @@ export async function updateTicket(
     teamId?: string | null;
     priorityId?: string;
     contactId?: string | null;
+    categoryId?: string | null;
+    assetId?: string | null;
   }
 ) {
   const existing = await prisma.ticket.findFirst({ where: { id: ticketId, tenantId } });
@@ -177,6 +194,10 @@ export async function updateTicket(
       payload: { assignee: ticket.assignee?.name ?? "Unassigned" },
       visibility: "customer",
     });
+  }
+
+  if (data.assigneeId !== undefined && data.assigneeId !== existing.assigneeId && data.assigneeId) {
+    await notifyTicketAssigned(ticketId, data.assigneeId, existing.ticketNumber, existing.subject);
   }
 
   if (data.priorityId && data.priorityId !== existing.priorityId) {
@@ -280,7 +301,9 @@ export async function getAvailableTransitions(ticketId: string) {
 }
 
 export async function getDashboardStats(tenantId: string, userId: string) {
-  const [myOpen, unassigned, recent] = await Promise.all([
+  const { getSlaAtRiskTickets } = await import("@/domain/sla");
+
+  const [myOpen, unassigned, recent, slaAtRisk] = await Promise.all([
     prisma.ticket.count({
       where: {
         tenantId,
@@ -303,9 +326,10 @@ export async function getDashboardStats(tenantId: string, userId: string) {
       orderBy: { updatedAt: "desc" },
       take: 10,
     }),
+    getSlaAtRiskTickets(tenantId),
   ]);
 
-  const myTickets = await prisma.ticket.findMany({
+  const myTicketsList = await prisma.ticket.findMany({
     where: {
       tenantId,
       assigneeId: userId,
@@ -317,5 +341,5 @@ export async function getDashboardStats(tenantId: string, userId: string) {
     take: 10,
   });
 
-  return { myOpen, unassigned, recent, myTickets };
+  return { myOpen, unassigned, recent, myTickets: myTicketsList, slaAtRisk };
 }

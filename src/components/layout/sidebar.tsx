@@ -10,13 +10,17 @@ import {
   Settings,
   ListOrdered,
   Cloud,
+  HardDrive,
+  Clock,
 } from "lucide-react";
 
 const navItems = [
   { href: "/app/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/app/queues", label: "Queues", icon: ListOrdered, badge: "1B" },
+  { href: "/app/queues", label: "Queues", icon: ListOrdered },
   { href: "/app/tickets", label: "Tickets", icon: Ticket },
   { href: "/app/customers", label: "Customers", icon: Users },
+  { href: "/app/assets", label: "Assets", icon: HardDrive },
+  { href: "/app/time", label: "Time", icon: Clock },
   { href: "/app/admin", label: "Administration", icon: Settings },
 ];
 
@@ -49,11 +53,6 @@ export function Sidebar() {
             >
               <Icon className="h-4 w-4" />
               {item.label}
-              {item.badge && (
-                <span className="ml-auto rounded bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-500">
-                  {item.badge}
-                </span>
-              )}
             </Link>
           );
         })}

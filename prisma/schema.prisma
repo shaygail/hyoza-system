@@ -24,6 +24,11 @@ model Tenant {
   tickets        Ticket[]
   roles          Role[]
   ticketSequence TicketSequence?
+  categories     Category[]
+  assets         Asset[]
+  queues         Queue[]
+  workTypes      WorkType[]
+  slaPolicies    SlaPolicy[]
 }
 
 model TicketSequence {
@@ -54,6 +59,9 @@ model User {
   internalNotes       TicketInternalNote[]
   activities          TicketActivity[]
   uploadedAttachments TicketAttachment[]
+  timeEntries         TimeEntry[]
+  queuePins           UserQueuePin[]
+  notifications       Notification[]
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -112,6 +120,7 @@ model Team {
   tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   members     TeamMember[]
   tickets     Ticket[]
+  queues      Queue[]
 
   @@index([tenantId])
 }
@@ -142,6 +151,8 @@ model Organisation {
   tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   contacts Contact[]
   tickets  Ticket[]
+  assets   Asset[]
+  timeEntries TimeEntry[]
 
   @@index([tenantId])
 }
@@ -242,8 +253,159 @@ model Priority {
 
   tenant  Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   tickets Ticket[]
+  slaPolicies SlaPolicy[]
 
   @@unique([tenantId, code])
+}
+
+model Category {
+  id        String   @id @default(cuid())
+  tenantId  String
+  name      String
+  code      String
+  parentId  String?
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  tenant       Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  parent       Category?  @relation("CategoryTree", fields: [parentId], references: [id])
+  children     Category[] @relation("CategoryTree")
+  tickets      Ticket[]   @relation("TicketCategory")
+  subcatTickets Ticket[]  @relation("TicketSubcategory")
+
+  @@unique([tenantId, code])
+  @@index([tenantId, parentId])
+}
+
+model Asset {
+  id                 String   @id @default(cuid())
+  tenantId           String
+  organisationId     String
+  assetTag           String
+  name               String
+  assetType          String   @default("other")
+  status             String   @default("active")
+  assignedContactId  String?
+  serialNumber       String?
+  manufacturer       String?
+  model              String?
+  operatingSystem    String?
+  location           String?
+  notes              String?
+  externalSource     String?
+  externalId         String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  tickets      Ticket[]
+
+  @@unique([tenantId, assetTag])
+  @@index([organisationId])
+}
+
+model Queue {
+  id               String   @id @default(cuid())
+  tenantId         String
+  name             String
+  description      String?
+  filterDefinition String   @default("{}")
+  sortBy           String   @default("updatedAt")
+  sortDirection    String   @default("desc")
+  isSystem         Boolean  @default(false)
+  visibility       String   @default("global")
+  teamId           String?
+  createdById      String?
+  createdAt        DateTime @default(now())
+
+  tenant Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  team   Team?          @relation(fields: [teamId], references: [id])
+  pins   UserQueuePin[]
+
+  @@index([tenantId])
+}
+
+model UserQueuePin {
+  userId    String
+  queueId   String
+  sortOrder Int    @default(0)
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  queue Queue @relation(fields: [queueId], references: [id], onDelete: Cascade)
+
+  @@id([userId, queueId])
+}
+
+model WorkType {
+  id                 String @id @default(cuid())
+  tenantId           String
+  name               String
+  code               String
+  isBillableDefault  Boolean @default(true)
+  sortOrder          Int    @default(0)
+
+  tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  timeEntries TimeEntry[]
+
+  @@unique([tenantId, code])
+}
+
+model TimeEntry {
+  id              String    @id @default(cuid())
+  tenantId        String
+  ticketId        String
+  userId          String
+  organisationId  String
+  workTypeId      String?
+  startedAt       DateTime?
+  endedAt         DateTime?
+  durationMinutes Int
+  isBillable      Boolean   @default(true)
+  notes           String?
+  status          String    @default("submitted")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  ticket       Ticket       @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id])
+  organisation Organisation @relation(fields: [organisationId], references: [id])
+  workType     WorkType?    @relation(fields: [workTypeId], references: [id])
+
+  @@index([ticketId])
+  @@index([userId])
+  @@index([organisationId])
+}
+
+model SlaPolicy {
+  id                String @id @default(cuid())
+  tenantId          String
+  name              String
+  priorityId        String
+  responseMinutes   Int
+  resolutionMinutes Int
+  isDefault         Boolean @default(false)
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  priority Priority @relation(fields: [priorityId], references: [id])
+  tickets  Ticket[]
+
+  @@index([tenantId])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  eventType String
+  title     String
+  body      String
+  linkUrl   String?
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
 }
 
 model Ticket {
@@ -259,9 +421,15 @@ model Ticket {
   statusId          String
   priorityId        String
   ticketTypeId      String
+  categoryId        String?
+  subcategoryId     String?
+  assetId           String?
+  slaPolicyId       String?
   source            String    @default("agent")
   tags              String    @default("[]")
   dueAt             DateTime?
+  responseDueAt     DateTime?
+  resolutionDueAt   DateTime?
   firstResponseAt   DateTime?
   resolvedAt        DateTime?
   closedAt          DateTime?
@@ -279,11 +447,16 @@ model Ticket {
   status       WorkflowStatus @relation(fields: [statusId], references: [id])
   priority     Priority     @relation(fields: [priorityId], references: [id])
   ticketType   TicketType   @relation(fields: [ticketTypeId], references: [id])
+  category     Category?    @relation("TicketCategory", fields: [categoryId], references: [id])
+  subcategory  Category?    @relation("TicketSubcategory", fields: [subcategoryId], references: [id])
+  asset        Asset?       @relation(fields: [assetId], references: [id])
+  slaPolicy    SlaPolicy?   @relation(fields: [slaPolicyId], references: [id])
   createdBy    User         @relation("TicketCreator", fields: [createdById], references: [id])
   comments         TicketComment[]
   internalNotes    TicketInternalNote[]
   attachments      TicketAttachment[]
   activities       TicketActivity[]
+  timeEntries      TimeEntry[]
 
   @@unique([tenantId, ticketNumber])
   @@index([tenantId, statusId])

@@ -29,11 +29,33 @@ export default async function DashboardPage() {
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
         <StatCard label="My Open Tickets" value={stats.myOpen} href="/app/tickets?view=my" />
         <StatCard label="Unassigned" value={stats.unassigned} href="/app/tickets?view=unassigned" />
+        <StatCard label="SLA At Risk" value={stats.slaAtRisk.length} href="/app/queues" alert />
         <StatCard label="Recently Updated" value={stats.recent.length} href="/app/tickets" />
       </div>
+
+      {stats.slaAtRisk.length > 0 && (
+        <div className="rounded-xl border border-red-200 bg-red-50">
+          <div className="border-b border-red-200 px-4 py-3">
+            <h2 className="font-medium text-red-800">SLA At Risk</h2>
+          </div>
+          <div className="divide-y divide-red-100">
+            {stats.slaAtRisk.map((ticket) => (
+              <Link key={ticket.id} href={`/app/tickets/${ticket.id}`} className="flex items-center justify-between px-4 py-3 hover:bg-red-100/50">
+                <div>
+                  <span className="font-mono text-xs text-red-600">{ticket.ticketNumber}</span>
+                  <p className="text-sm font-medium text-red-900">{ticket.subject}</p>
+                </div>
+                {ticket.resolutionDueAt && (
+                  <span className="text-xs text-red-600">Due {formatDate(ticket.resolutionDueAt)}</span>
+                )}
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="rounded-xl border border-slate-200 bg-white">
         <div className="border-b border-slate-200 px-4 py-3">
@@ -68,11 +90,11 @@ export default async function DashboardPage() {
   );
 }
 
-function StatCard({ label, value, href }: { label: string; value: number; href: string }) {
+function StatCard({ label, value, href, alert }: { label: string; value: number; href: string; alert?: boolean }) {
   return (
-    <Link href={href} className="rounded-xl border border-slate-200 bg-white p-6 hover:border-ourcloud-200 transition-colors">
+    <Link href={href} className={`rounded-xl border bg-white p-6 transition-colors ${alert && value > 0 ? "border-red-200 hover:border-red-300" : "border-slate-200 hover:border-ourcloud-200"}`}>
       <p className="text-sm text-slate-500">{label}</p>
-      <p className="mt-2 text-3xl font-semibold text-ourcloud-700">{value}</p>
+      <p className={`mt-2 text-3xl font-semibold ${alert && value > 0 ? "text-red-600" : "text-ourcloud-700"}`}>{value}</p>
     </Link>
   );
 }
