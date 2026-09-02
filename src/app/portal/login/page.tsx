@@ -8,7 +8,7 @@ export default async function PortalLoginPage() {
   return (
     <Suspense>
       <PortalLoginForm
-        tenantName={config?.tenantName ?? "OurCloud"}
+        tenantName={config?.tenantName ?? "HYOZA"}
         portalTitle={config?.portalTitle ?? "Support"}
         logoUrl={config?.branding.logoUrl ?? ""}
         primaryColor={config?.branding.primaryColor ?? "#4f46e5"}

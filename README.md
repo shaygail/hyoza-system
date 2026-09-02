@@ -2,7 +2,7 @@
 
 A web-based IT Service Management (ITSM) platform for service desk technicians, customers, managers, and administrators.
 
-**Repository:** `hyoza-system` (display name: HYOZA System)
+**Repository:** [github.com/shaygail/hyoza-system](https://github.com/shaygail/hyoza-system)
 
 **Design principle:** *Familiar first. Powerful second.*
 
