@@ -2,18 +2,22 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { PortalIntegrationPanel } from "@/components/admin/portal-integration";
 
 export function SystemSettingsPanel() {
   const [timezone, setTimezone] = useState("Europe/London");
   const [portalTitle, setPortalTitle] = useState("Support");
+  const [welcomeMessage, setWelcomeMessage] = useState("");
   const [logoUrl, setLogoUrl] = useState("");
   const [primaryColor, setPrimaryColor] = useState("#4f46e5");
   const [tenantName, setTenantName] = useState("");
+  const [baseUrl, setBaseUrl] = useState("");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
   useEffect(() => {
+    setBaseUrl(window.location.origin);
     fetch("/api/v1/settings")
       .then((r) => r.json())
       .then((data) => {
@@ -23,6 +27,7 @@ export function SystemSettingsPanel() {
         }
         setTimezone(data.timezone);
         setPortalTitle(data.portalTitle);
+        setWelcomeMessage(data.welcomeMessage ?? "");
         setLogoUrl(data.branding?.logoUrl ?? "");
         setPrimaryColor(data.branding?.primaryColor ?? "#4f46e5");
         setTenantName(data.tenantName ?? "");
@@ -40,6 +45,7 @@ export function SystemSettingsPanel() {
       body: JSON.stringify({
         timezone,
         portalTitle,
+        welcomeMessage,
         branding: { logoUrl, primaryColor },
       }),
     });
@@ -53,18 +59,28 @@ export function SystemSettingsPanel() {
   }
 
   return (
-    <div className="space-y-6 max-w-xl">
+    <div className="space-y-6 max-w-2xl">
       <div>
         <h2 className="text-lg font-semibold text-slate-900">System Settings</h2>
         <p className="text-sm text-slate-500">
-          Organisation: {tenantName || "—"} · timezone, portal branding, and defaults
+          Organisation: {tenantName || "—"} · portal branding and website links
         </p>
       </div>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
       {message && <p className="text-sm text-green-600">{message}</p>}
 
+      {baseUrl && (
+        <PortalIntegrationPanel
+          baseUrl={baseUrl}
+          portalTitle={portalTitle}
+          welcomeMessage={welcomeMessage}
+          onWelcomeChange={setWelcomeMessage}
+        />
+      )}
+
       <div className="rounded-xl border border-slate-200 bg-white p-5 space-y-4">
+        <h3 className="font-medium text-slate-900">Branding</h3>
         <div>
           <label className="block text-sm font-medium text-slate-700">Timezone</label>
           <select
@@ -87,7 +103,6 @@ export function SystemSettingsPanel() {
             placeholder="Support"
             className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
           />
-          <p className="mt-1 text-xs text-slate-400">Shown as &quot;{'{Organisation}'} {portalTitle}&quot; in the portal</p>
         </div>
         <div>
           <label className="block text-sm font-medium text-slate-700">Logo URL</label>
@@ -116,7 +131,14 @@ export function SystemSettingsPanel() {
             />
           </div>
         </div>
-        <Button onClick={save} disabled={saving}>{saving ? "Saving..." : "Save Settings"}</Button>
+        <div className="flex gap-2">
+          <Button onClick={save} disabled={saving}>{saving ? "Saving..." : "Save Settings"}</Button>
+          {baseUrl && (
+            <a href="/support" target="_blank" rel="noopener noreferrer">
+              <Button variant="secondary">Preview portal</Button>
+            </a>
+          )}
+        </div>
       </div>
     </div>
   );

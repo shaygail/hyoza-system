@@ -54,8 +54,11 @@ export default function LoginPage() {
           <p className="font-medium text-slate-700">Demo accounts</p>
           <p>agent@ourcloud.local / agent123</p>
           <p>admin@ourcloud.local / admin123</p>
-          <p className="mt-2 text-slate-400">
-            First time? Run <code className="rounded bg-slate-200 px-1">npm run db:setup</code>
+          <p className="mt-2">
+            Customer?{" "}
+            <a href="/portal/login" className="font-medium text-ourcloud-700 hover:underline">
+              Sign in to the support portal
+            </a>
           </p>
         </div>
       </div>

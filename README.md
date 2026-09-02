@@ -43,6 +43,7 @@ A web-based IT Service Management (ITSM) platform for service desk technicians, 
 - Admin-defined custom fields
 - Problem and Change ticket types
 - Custom roles with configurable permissions
+- **Customer portal** — public support page, customer login, embeddable widget for your website
 
 ## Tech stack
 
@@ -88,6 +89,16 @@ To process inbound emails and SLA escalations:
 ```bash
 npm run email:worker
 ```
+
+### Customer portal (link from your website)
+
+| Page | URL |
+|------|-----|
+| Support home | `http://127.0.0.1:4317/support` |
+| Customer sign-in | `http://127.0.0.1:4317/portal/login` |
+| Embed widget | `http://127.0.0.1:4317/embed/support` |
+
+Copy integration links and embed code from **Administration → System**.
 
 ### Demo accounts
 

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 export interface TenantSettings {
   timezone: string;
   portalTitle: string;
+  welcomeMessage: string;
   branding: {
     logoUrl: string;
     primaryColor: string;
@@ -12,6 +13,7 @@ export interface TenantSettings {
 const DEFAULTS: TenantSettings = {
   timezone: "Europe/London",
   portalTitle: "Support",
+  welcomeMessage: "Get help from our support team. Sign in to view your tickets or submit a new request.",
   branding: {
     logoUrl: "",
     primaryColor: "#4f46e5",
@@ -24,6 +26,7 @@ export function parseTenantSettings(raw: string): TenantSettings {
     return {
       timezone: parsed.timezone ?? DEFAULTS.timezone,
       portalTitle: parsed.portalTitle ?? DEFAULTS.portalTitle,
+      welcomeMessage: parsed.welcomeMessage ?? DEFAULTS.welcomeMessage,
       branding: {
         logoUrl: parsed.branding?.logoUrl ?? DEFAULTS.branding.logoUrl,
         primaryColor: parsed.branding?.primaryColor ?? DEFAULTS.branding.primaryColor,
@@ -48,6 +51,7 @@ export async function updateTenantSettings(tenantId: string, settings: Partial<T
   const merged: TenantSettings = {
     timezone: settings.timezone ?? current.timezone,
     portalTitle: settings.portalTitle ?? current.portalTitle,
+    welcomeMessage: settings.welcomeMessage ?? current.welcomeMessage,
     branding: {
       logoUrl: settings.branding?.logoUrl ?? current.branding.logoUrl,
       primaryColor: settings.branding?.primaryColor ?? current.branding.primaryColor,
