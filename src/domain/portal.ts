@@ -19,7 +19,7 @@ export async function listCustomerTickets(userId: string) {
 
   return prisma.ticket.findMany({
     where: {
-      organisationId: contact.organisationId,
+      contactId: contact.id,
       deletedAt: null,
       ticketType: { visibleInPortal: true },
     },
@@ -35,7 +35,7 @@ export async function getCustomerTicket(userId: string, ticketId: string) {
   return prisma.ticket.findFirst({
     where: {
       id: ticketId,
-      organisationId: contact.organisationId,
+      contactId: contact.id,
       deletedAt: null,
     },
     include: {

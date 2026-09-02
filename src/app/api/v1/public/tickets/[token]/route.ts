@@ -1,18 +1,9 @@
 import { NextResponse } from "next/server";
-import { getGuestAccessByToken, addGuestReply } from "@/domain/guest-portal";
+import { getGuestAccessByToken, addGuestReply, listGuestTicketsForToken } from "@/domain/guest-portal";
 
-export async function GET(
-  _request: Request,
-  { params }: { params: Promise<{ token: string }> }
-) {
-  const { token } = await params;
-  const access = await getGuestAccessByToken(token);
-  if (!access || access.ticket.deletedAt) {
-    return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
-  }
-
+function serializeGuestTicket(access: NonNullable<Awaited<ReturnType<typeof getGuestAccessByToken>>>) {
   const { ticket } = access;
-  return NextResponse.json({
+  return {
     ticketNumber: ticket.ticketNumber,
     subject: ticket.subject,
     description: ticket.description,
@@ -27,6 +18,24 @@ export async function GET(
       authorName: c.onBehalfOfContact?.name ?? c.author.name,
       isFromSupport: !c.onBehalfOfContact,
     })),
+  };
+}
+
+export async function GET(
+  _request: Request,
+  { params }: { params: Promise<{ token: string }> }
+) {
+  const { token } = await params;
+  const access = await getGuestAccessByToken(token);
+  if (!access || access.ticket.deletedAt) {
+    return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
+  }
+
+  const guestContext = await listGuestTicketsForToken(token);
+
+  return NextResponse.json({
+    ...serializeGuestTicket(access),
+    customerTickets: guestContext?.customerTickets ?? [],
   });
 }
 

@@ -230,3 +230,67 @@ export async function getPublicFormOptions() {
 
   return { priorities, ticketTypes };
 }
+
+export async function listGuestTicketsForEmail(
+  tenantId: string,
+  email: string,
+  currentToken?: string
+) {
+  const normalizedEmail = email.trim().toLowerCase();
+  const contacts = await prisma.contact.findMany({
+    where: { tenantId, email: normalizedEmail },
+    select: { id: true },
+  });
+  const contactIds = contacts.map((c) => c.id);
+
+  const tickets = await prisma.ticket.findMany({
+    where: {
+      tenantId,
+      deletedAt: null,
+      ticketType: { visibleInPortal: true },
+      OR: [
+        ...(contactIds.length > 0 ? [{ contactId: { in: contactIds } }] : []),
+        { guestAccess: { some: { email: normalizedEmail } } },
+      ],
+    },
+    include: {
+      status: true,
+      priority: true,
+      guestAccess: { where: { email: normalizedEmail }, take: 1 },
+    },
+    orderBy: { updatedAt: "desc" },
+  });
+
+  const results = [];
+  for (const ticket of tickets) {
+    let access = ticket.guestAccess[0];
+    if (!access) {
+      access = await createGuestAccess(ticket.id, normalizedEmail);
+    }
+    results.push({
+      ticketNumber: ticket.ticketNumber,
+      subject: ticket.subject,
+      status: ticket.status,
+      priority: ticket.priority,
+      updatedAt: ticket.updatedAt.toISOString(),
+      token: access.token,
+      isCurrent: access.token === currentToken,
+    });
+  }
+
+  return results;
+}
+
+export async function listGuestTicketsForToken(token: string) {
+  const access = await prisma.ticketGuestAccess.findUnique({ where: { token } });
+  if (!access) return null;
+
+  const ticket = await prisma.ticket.findUnique({
+    where: { id: access.ticketId },
+    select: { tenantId: true, deletedAt: true },
+  });
+  if (!ticket || ticket.deletedAt) return null;
+
+  const customerTickets = await listGuestTicketsForEmail(ticket.tenantId, access.email, token);
+  return { email: access.email, customerTickets };
+}

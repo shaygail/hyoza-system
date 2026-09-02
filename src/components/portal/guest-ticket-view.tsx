@@ -1,10 +1,21 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/utils";
+
+interface GuestTicketSummary {
+  ticketNumber: string;
+  subject: string;
+  status: { name: string; color: string };
+  priority: { name: string; color: string };
+  updatedAt: string;
+  token: string;
+  isCurrent: boolean;
+}
 
 interface GuestTicket {
   ticketNumber: string;
@@ -13,6 +24,7 @@ interface GuestTicket {
   status: { name: string; color: string };
   priority: { name: string; color: string };
   contactName: string;
+  customerTickets: GuestTicketSummary[];
   comments: {
     id: string;
     body: string;
@@ -73,8 +85,49 @@ export function GuestTicketView({ token }: { token: string }) {
     return <p className="text-slate-500">Loading ticket...</p>;
   }
 
+  const otherTickets = ticket.customerTickets.filter((t) => !t.isCurrent);
+  const showTicketList = ticket.customerTickets.length > 1;
+
   return (
     <div className="space-y-4">
+      {showTicketList && (
+        <div className="rounded-xl border border-slate-200 bg-white p-4">
+          <h2 className="text-sm font-semibold text-slate-900">Your tickets</h2>
+          <p className="mt-1 text-xs text-slate-500">
+            All requests linked to {ticket.contactName}
+          </p>
+          <div className="mt-3 divide-y divide-slate-100">
+            {ticket.customerTickets.map((t) => (
+              <Link
+                key={t.token}
+                href={`/support/ticket/${t.token}`}
+                className={`block py-3 first:pt-0 last:pb-0 hover:bg-slate-50 -mx-2 px-2 rounded-lg ${
+                  t.isCurrent ? "bg-slate-50 ring-1 ring-slate-200" : ""
+                }`}
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-mono text-xs text-slate-500">{t.ticketNumber}</span>
+                  <Badge color={t.status.color}>{t.status.name}</Badge>
+                  {t.isCurrent && (
+                    <span className="text-xs font-medium text-emerald-700">Viewing</span>
+                  )}
+                </div>
+                <p className="mt-1 text-sm font-medium text-slate-900">{t.subject}</p>
+                <p className="text-xs text-slate-400">Updated {formatDate(t.updatedAt)}</p>
+              </Link>
+            ))}
+          </div>
+          <div className="mt-4 border-t border-slate-100 pt-3">
+            <Link
+              href="/support/submit"
+              className="text-sm font-medium text-emerald-700 hover:underline"
+            >
+              Submit another request
+            </Link>
+          </div>
+        </div>
+      )}
+
       <div className="rounded-xl border border-slate-200 bg-white p-6">
         <div className="flex flex-wrap items-center gap-2">
           <span className="font-mono text-sm text-slate-500">{ticket.ticketNumber}</span>
@@ -82,7 +135,7 @@ export function GuestTicketView({ token }: { token: string }) {
           <Badge color={ticket.priority.color}>{ticket.priority.name}</Badge>
         </div>
         <h1 className="mt-2 text-xl font-semibold text-slate-900">{ticket.subject}</h1>
-        <p className="mt-4 text-sm text-slate-700 whitespace-pre-wrap">{ticket.description}</p>
+        <p className="mt-4 whitespace-pre-wrap text-sm text-slate-700">{ticket.description}</p>
       </div>
 
       <div className="rounded-xl border border-slate-200 bg-white p-4">
@@ -121,9 +174,11 @@ export function GuestTicketView({ token }: { token: string }) {
         </div>
       </div>
 
-      <p className="text-center text-xs text-slate-400">
-        Bookmark this page to check your ticket anytime. We&apos;ll also email you when there are updates.
-      </p>
+      {!showTicketList && otherTickets.length === 0 && (
+        <p className="text-center text-xs text-slate-400">
+          Bookmark this page to check your ticket anytime. We&apos;ll also email you when there are updates.
+        </p>
+      )}
     </div>
   );
 }

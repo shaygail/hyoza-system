@@ -46,16 +46,27 @@ interface Metadata {
   currentUserName?: string;
 }
 
+interface RelatedTicket {
+  id: string;
+  ticketNumber: string;
+  subject: string;
+  status: { name: string; color: string };
+  priority: { name: string; color: string };
+  updatedAt: string;
+}
+
 type TimelineFilter = "all" | "customer" | "internal" | "system";
 
 export function TicketDetailClient({
   ticket: initialTicket,
   transitions,
   metadata,
+  relatedTickets = [],
 }: {
   ticket: TicketData;
   transitions: Transition[];
   metadata: Metadata;
+  relatedTickets?: RelatedTicket[];
 }) {
   const router = useRouter();
   const [ticket, setTicket] = useState(initialTicket);
@@ -388,6 +399,28 @@ export function TicketDetailClient({
               {ticket.asset && <DetailRow label="Asset">{ticket.asset.assetTag}</DetailRow>}
             </dl>
           </div>
+
+          {relatedTickets.length > 0 && ticket.contact && (
+            <div className="rounded-lg border border-slate-200 bg-white p-4">
+              <h2 className="text-sm font-semibold text-slate-700 mb-2">
+                Other tickets from {ticket.contact.name}
+              </h2>
+              <ul className="divide-y divide-slate-100">
+                {relatedTickets.map((t) => (
+                  <li key={t.id}>
+                    <Link href={`/app/tickets/${t.id}`} className="block py-2 hover:bg-slate-50 -mx-2 px-2 rounded">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-mono text-xs text-slate-400">{t.ticketNumber}</span>
+                        <Badge color={t.status.color}>{t.status.name}</Badge>
+                      </div>
+                      <p className="mt-0.5 text-sm font-medium text-slate-900">{t.subject}</p>
+                      <p className="text-xs text-slate-400">{formatDate(t.updatedAt)}</p>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {transitions.length > 0 && (
             <div className="rounded-lg border border-slate-200 bg-white p-4">

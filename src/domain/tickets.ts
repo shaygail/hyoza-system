@@ -59,6 +59,24 @@ export async function listTickets(
   });
 }
 
+export async function listTicketsForContact(
+  tenantId: string,
+  contactId: string,
+  options?: { excludeTicketId?: string; limit?: number }
+) {
+  return prisma.ticket.findMany({
+    where: {
+      tenantId,
+      contactId,
+      deletedAt: null,
+      ...(options?.excludeTicketId ? { id: { not: options.excludeTicketId } } : {}),
+    },
+    include: { status: true, priority: true },
+    orderBy: { updatedAt: "desc" },
+    take: options?.limit ?? 10,
+  });
+}
+
 export async function getTicket(tenantId: string, id: string) {
   return prisma.ticket.findFirst({
     where: { id, tenantId, deletedAt: null },
