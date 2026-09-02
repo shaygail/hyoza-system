@@ -3,8 +3,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/input";
+import { Textarea, Select } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { SearchSelect } from "@/components/ui/search-select";
 import { formatDate } from "@/lib/utils";
 import { getActivityLabel } from "@/lib/activity-labels";
 import Link from "next/link";
@@ -19,7 +20,8 @@ interface TicketData {
   organisation: { id: string; name: string };
   contact: { name: string; user?: { id: string; name: string } | null } | null;
   assignee: { id: string; name: string } | null;
-  team: { name: string } | null;
+  team: { id: string; name: string } | null;
+  category: { id: string; name: string; code: string } | null;
   status: { id: string; name: string; color: string; code: string };
   priority: { id: string; name: string; color: string };
   ticketType: { name: string };
@@ -40,8 +42,9 @@ interface Transition {
 }
 
 interface Metadata {
-  users: { id: string; name: string }[];
+  technicians: { id: string; name: string; email: string }[];
   priorities: { id: string; name: string }[];
+  routingCategories: { id: string; name: string; code: string }[];
   workTypes?: { id: string; name: string }[];
   currentUserName?: string;
 }
@@ -79,11 +82,34 @@ export function TicketDetailClient({
   const [resolveModal, setResolveModal] = useState<Transition | null>(null);
   const [resolutionSummary, setResolutionSummary] = useState("");
   const [loading, setLoading] = useState(false);
+  const [detailsSaving, setDetailsSaving] = useState(false);
+  const [detailsError, setDetailsError] = useState("");
 
   async function refreshTicket() {
     const res = await fetch(`/api/v1/tickets/${ticket.id}`);
     if (res.ok) setTicket(await res.json());
     router.refresh();
+  }
+
+  async function updateTicketDetails(data: { assigneeId?: string | null; categoryId?: string | null }) {
+    setDetailsSaving(true);
+    setDetailsError("");
+    try {
+      const res = await fetch(`/api/v1/tickets/${ticket.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setDetailsError(payload.error ?? "Failed to update ticket");
+        return;
+      }
+      setTicket(payload);
+      router.refresh();
+    } finally {
+      setDetailsSaving(false);
+    }
   }
 
   async function handleReply() {
@@ -386,18 +412,50 @@ export function TicketDetailClient({
               <DetailRow label="Priority">
                 <Badge color={ticket.priority.color}>{ticket.priority.name}</Badge>
               </DetailRow>
-              <DetailRow label="Assignee">
-                {ticket.assignee?.name ?? <span className="text-slate-400">Unassigned</span>}
+              <DetailRow label="Category" stacked>
+                <Select
+                  value={ticket.category?.id ?? ""}
+                  onChange={(e) => updateTicketDetails({ categoryId: e.target.value || null })}
+                  disabled={detailsSaving}
+                  className="text-sm"
+                >
+                  <option value="">Select category...</option>
+                  {metadata.routingCategories.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
+                </Select>
+              </DetailRow>
+              <DetailRow label="Assignee" stacked>
+                <SearchSelect
+                  options={metadata.technicians.map((technician) => ({
+                    id: technician.id,
+                    label: technician.name,
+                    hint: technician.email,
+                  }))}
+                  value={ticket.assignee?.id ?? null}
+                  onChange={(assigneeId) => updateTicketDetails({ assigneeId })}
+                  placeholder="Search technicians..."
+                  disabled={detailsSaving}
+                />
               </DetailRow>
               <DetailRow label="Customer">{ticket.organisation.name}</DetailRow>
               {ticket.contact && <DetailRow label="Contact">{ticket.contact.name}</DetailRow>}
-              <DetailRow label="Team">{ticket.team?.name ?? "—"}</DetailRow>
+              <DetailRow label="Team">
+                {ticket.team?.name ?? (
+                  <span className="text-slate-400">Set a category to assign a team</span>
+                )}
+              </DetailRow>
               <DetailRow label="Type">{ticket.ticketType.name}</DetailRow>
               {ticket.resolutionDueAt && (
                 <DetailRow label="SLA Due">{formatDate(ticket.resolutionDueAt)}</DetailRow>
               )}
               {ticket.asset && <DetailRow label="Asset">{ticket.asset.assetTag}</DetailRow>}
             </dl>
+            {detailsError && (
+              <p className="px-4 pb-3 text-xs text-red-600">{detailsError}</p>
+            )}
           </div>
 
           {relatedTickets.length > 0 && ticket.contact && (
@@ -484,7 +542,24 @@ export function TicketDetailClient({
   );
 }
 
-function DetailRow({ label, children }: { label: string; children: React.ReactNode }) {
+function DetailRow({
+  label,
+  children,
+  stacked = false,
+}: {
+  label: string;
+  children: React.ReactNode;
+  stacked?: boolean;
+}) {
+  if (stacked) {
+    return (
+      <div className="space-y-1.5 px-4 py-3">
+        <dt className="text-slate-500">{label}</dt>
+        <dd className="text-slate-900">{children}</dd>
+      </div>
+    );
+  }
+
   return (
     <div className="flex justify-between gap-4 px-4 py-3">
       <dt className="text-slate-500 shrink-0">{label}</dt>

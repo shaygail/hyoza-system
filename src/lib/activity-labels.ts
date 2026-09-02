@@ -6,6 +6,10 @@ export function getActivityLabel(eventType: string, payload: Record<string, unkn
       return `Status changed from ${payload.from} to ${payload.to}`;
     case "priority.changed":
       return `Priority changed from ${payload.from} to ${payload.to}`;
+    case "category.changed":
+      return `Category changed from ${payload.from} to ${payload.to}`;
+    case "team.changed":
+      return `Team set to ${payload.team}`;
     case "ticket.assigned":
       return `Assigned to ${payload.assignee}`;
     case "ticket.reassigned":

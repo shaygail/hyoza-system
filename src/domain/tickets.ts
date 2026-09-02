@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/domain/activity";
 import { applySlaToTicket } from "@/domain/sla";
 import { notifyTicketAssigned } from "@/domain/notifications";
+import { resolveTeamIdForCategory } from "@/domain/routing";
 
 export async function generateTicketNumber(tenantId: string): Promise<string> {
   const sequence = await prisma.ticketSequence.upsert({
@@ -131,6 +132,10 @@ export async function createTicket(params: {
 
   const ticketNumber = await generateTicketNumber(params.tenantId);
 
+  const teamId =
+    params.teamId ??
+    (params.categoryId ? await resolveTeamIdForCategory(params.tenantId, params.categoryId) : undefined);
+
   const ticket = await prisma.ticket.create({
     data: {
       tenantId: params.tenantId,
@@ -140,7 +145,7 @@ export async function createTicket(params: {
       organisationId: params.organisationId,
       contactId: params.contactId,
       assigneeId: params.assigneeId,
-      teamId: params.teamId,
+      teamId,
       statusId: defaultStatus.id,
       priorityId: params.priorityId,
       ticketTypeId: params.ticketTypeId,
@@ -209,10 +214,18 @@ export async function updateTicket(
   const existing = await prisma.ticket.findFirst({ where: { id: ticketId, tenantId } });
   if (!existing) throw new Error("Ticket not found");
 
+  const updateData = { ...data };
+
+  if (data.categoryId !== undefined) {
+    updateData.teamId = data.categoryId
+      ? await resolveTeamIdForCategory(tenantId, data.categoryId)
+      : null;
+  }
+
   const ticket = await prisma.ticket.update({
     where: { id: ticketId },
-    data,
-    include: { assignee: true, priority: true, status: true },
+    data: updateData,
+    include: { assignee: true, priority: true, status: true, team: true, category: true },
   });
 
   if (data.assigneeId !== undefined && data.assigneeId !== existing.assigneeId) {
@@ -237,6 +250,35 @@ export async function updateTicket(
       actorId,
       eventType: "priority.changed",
       payload: { from: oldPriority?.name, to: newPriority?.name },
+      visibility: "internal",
+    });
+  }
+
+  if (data.categoryId !== undefined && data.categoryId !== existing.categoryId) {
+    const oldCategory = existing.categoryId
+      ? await prisma.category.findUnique({ where: { id: existing.categoryId } })
+      : null;
+    const newCategory = data.categoryId
+      ? await prisma.category.findUnique({ where: { id: data.categoryId } })
+      : null;
+    await logActivity({
+      ticketId,
+      actorId,
+      eventType: "category.changed",
+      payload: { from: oldCategory?.name ?? "None", to: newCategory?.name ?? "None" },
+      visibility: "internal",
+    });
+  }
+
+  if (updateData.teamId !== undefined && updateData.teamId !== existing.teamId) {
+    const newTeam = updateData.teamId
+      ? await prisma.team.findUnique({ where: { id: updateData.teamId } })
+      : null;
+    await logActivity({
+      ticketId,
+      actorId,
+      eventType: "team.changed",
+      payload: { team: newTeam?.name ?? "None" },
       visibility: "internal",
     });
   }

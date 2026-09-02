@@ -84,6 +84,8 @@ async function main() {
     await seedPhase1B();
     const { seedPhase1C } = await import("./seed-phase1c");
     await seedPhase1C();
+    const { seedRouting } = await import("./seed-routing");
+    await seedRouting();
     return;
   }
 
@@ -348,6 +350,8 @@ async function main() {
   await seedPhase1B();
   const { seedPhase1C } = await import("./seed-phase1c");
   await seedPhase1C();
+  const { seedRouting } = await import("./seed-routing");
+  await seedRouting();
 }
 
 main()

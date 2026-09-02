@@ -35,8 +35,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const body = await request.json();
 
   try {
-    const ticket = await updateTicket(session.user.tenantId, id, session.user.id, body);
-    return NextResponse.json(ticket);
+    await updateTicket(session.user.tenantId, id, session.user.id, body);
+    const full = await getTicket(session.user.tenantId, id);
+    if (!full) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    return NextResponse.json(serializeTicketForClient(full));
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 400 });
   }
