@@ -1,11 +1,6 @@
-import { AdminNav } from "@/components/admin/admin-nav";
-import { AdminSettingsPanel } from "@/components/admin/admin-settings";
+import { redirect } from "next/navigation";
 
-export default function AdminAgreementsPage() {
-  return (
-    <div className="space-y-6">
-      <AdminNav />
-      <AdminSettingsPanel activeTab="agreements" />
-    </div>
-  );
+/** Legacy agreements route — contracts replaced service agreements. */
+export default function AdminAgreementsRedirect() {
+  redirect("/app/admin/contracts");
 }

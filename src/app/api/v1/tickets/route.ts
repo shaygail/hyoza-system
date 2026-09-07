@@ -12,8 +12,12 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url);
   const view = (searchParams.get("view") || "all") as TicketView;
+  const { getUserSecurityLevel } = await import("@/domain/security");
+  const level = await getUserSecurityLevel(session.user.id);
 
-  const tickets = await listTickets(session.user.tenantId, view, session.user.id);
+  const tickets = await listTickets(session.user.tenantId, view, session.user.id, {
+    maxSecurityLevel: level,
+  });
   return NextResponse.json(tickets);
 }
 

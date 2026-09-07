@@ -57,3 +57,45 @@ export async function notifyCustomerReply(ticketId: string, assigneeId: string |
     linkUrl: `/app/tickets/${ticketId}`,
   });
 }
+
+export async function notifyAgentsTaggedInNote(params: {
+  ticketId: string;
+  ticketNumber: string;
+  subject: string;
+  notePreview: string;
+  authorName: string;
+  taggedUserIds: string[];
+}) {
+  const uniqueIds = [...new Set(params.taggedUserIds)];
+  if (uniqueIds.length === 0) return;
+
+  const users = await prisma.user.findMany({
+    where: { id: { in: uniqueIds }, isActive: true },
+    select: { id: true, email: true, name: true },
+  });
+
+  const { sendAgentTaggedInNoteEmail, agentTicketUrl } = await import("@/domain/agent-email");
+  const ticketUrl = agentTicketUrl(params.ticketId);
+
+  await Promise.all(
+    users.map(async (user) => {
+      await createNotification({
+        userId: user.id,
+        eventType: "internal_note.tagged",
+        title: `Tagged in note: ${params.ticketNumber}`,
+        body: `${params.authorName} tagged you in an internal note.`,
+        linkUrl: `/app/tickets/${params.ticketId}`,
+      });
+
+      await sendAgentTaggedInNoteEmail({
+        to: user.email,
+        name: user.name,
+        ticketNumber: params.ticketNumber,
+        subject: params.subject,
+        authorName: params.authorName,
+        notePreview: params.notePreview,
+        ticketUrl,
+      });
+    })
+  );
+}

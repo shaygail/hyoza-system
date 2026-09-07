@@ -20,6 +20,7 @@ export function serializeTicketForClient(ticket: TicketWithRelations) {
       ...n,
       createdAt: n.createdAt.toISOString(),
       updatedAt: n.updatedAt.toISOString(),
+      taggedUsers: n.tags.map((t) => t.user),
     })),
     attachments: ticket.attachments.map((a) => ({
       ...a,

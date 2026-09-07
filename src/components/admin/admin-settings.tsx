@@ -42,6 +42,7 @@ interface Role {
   code: string;
   isSystem: boolean;
   rolePermissions: { permission: { key: string } }[];
+  _count?: { userRoles: number };
 }
 
 interface ServiceAgreement {
@@ -66,6 +67,8 @@ export function AdminSettingsPanel({ activeTab }: { activeTab: AdminTab }) {
   const [rules, setRules] = useState<AutomationRule[]>([]);
   const [fields, setFields] = useState<CustomField[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
+  const [canGrantCrm, setCanGrantCrm] = useState(false);
+  const [crmSavingRoleId, setCrmSavingRoleId] = useState<string | null>(null);
   const [agreements, setAgreements] = useState<ServiceAgreement[]>([]);
   const [mailboxes, setMailboxes] = useState<Mailbox[]>([]);
   const [slaData, setSlaData] = useState<{
@@ -102,6 +105,7 @@ export function AdminSettingsPanel({ activeTab }: { activeTab: AdminTab }) {
         if (!res.ok) { setError("Unable to load roles"); return; }
         const data = await res.json();
         setRoles(data.roles);
+        setCanGrantCrm(Boolean(data.canGrantCrm));
       } else if (tab === "agreements") {
         const res = await fetch("/api/v1/service-agreements");
         if (!res.ok) { setError("Unable to load agreements"); return; }
@@ -162,6 +166,28 @@ export function AdminSettingsPanel({ activeTab }: { activeTab: AdminTab }) {
     if (res.ok) {
       setNewMailbox({ name: "", emailAddress: "" });
       loadTab("email");
+    }
+  }
+
+  async function setCrmAccess(roleId: string, view: boolean, edit: boolean) {
+    setCrmSavingRoleId(roleId);
+    setError("");
+    setSaveMsg("");
+    try {
+      const res = await fetch("/api/v1/admin/roles", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "setCrmAccess", roleId, view, edit }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data.error ?? "Failed to update CRM access");
+        return;
+      }
+      setRoles((current) => current.map((role) => (role.id === roleId ? { ...role, ...data } : role)));
+      setSaveMsg("CRM access updated. Users must sign out and back in for changes to apply.");
+    } finally {
+      setCrmSavingRoleId(null);
     }
   }
 
@@ -319,21 +345,70 @@ export function AdminSettingsPanel({ activeTab }: { activeTab: AdminTab }) {
   if (activeTab === "roles") {
     return (
       <div className="space-y-4">
-        <h2 className="text-lg font-semibold">Custom Roles</h2>
+        <div>
+          <h2 className="text-lg font-semibold">Roles & CRM access</h2>
+          <p className="mt-1 text-sm text-slate-500">
+            Only Super Admin can grant or revoke CRM access. Other role permissions stay managed as before.
+          </p>
+        </div>
+        {error && <p className="text-sm text-red-600">{error}</p>}
+        {saveMsg && <p className="text-sm text-green-700">{saveMsg}</p>}
+        {!canGrantCrm && (
+          <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+            Sign in as Super Admin to change CRM access for roles.
+          </p>
+        )}
         <div className="space-y-3">
-          {roles.map((role) => (
-            <div key={role.id} className="rounded-xl border border-slate-200 bg-white p-4">
-              <div className="flex items-center gap-2">
-                <span className="font-medium">{role.name}</span>
-                <Badge color={role.isSystem ? "#6366f1" : "#22c55e"}>
-                  {role.isSystem ? "System" : "Custom"}
-                </Badge>
-              </div>
-              <p className="text-sm text-slate-500 mt-1">
-                {role.rolePermissions.length} permissions · code: {role.code}
-              </p>
-            </div>
-          ))}
+          {roles
+            .filter((role) => role.code !== "customer")
+            .map((role) => {
+              const keys = role.rolePermissions.map((rp) => rp.permission.key);
+              const hasView = keys.includes("customers.view");
+              const hasEdit = keys.includes("customers.edit");
+              const locked = role.code === "super_admin" || !canGrantCrm;
+              const saving = crmSavingRoleId === role.id;
+              return (
+                <div key={role.id} className="rounded-xl border border-slate-200 bg-white p-4">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-medium">{role.name}</span>
+                    <Badge color={role.isSystem ? "#6366f1" : "#22c55e"}>
+                      {role.isSystem ? "System" : "Custom"}
+                    </Badge>
+                    {role.code === "super_admin" && (
+                      <Badge color="#0f766e">Grants CRM</Badge>
+                    )}
+                  </div>
+                  <p className="text-sm text-slate-500 mt-1">
+                    {role.rolePermissions.length} permissions · code: {role.code}
+                    {role._count ? ` · ${role._count.userRoles} users` : ""}
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-4 text-sm">
+                    <label className={`flex items-center gap-2 ${locked ? "text-slate-400" : "text-slate-700"}`}>
+                      <input
+                        type="checkbox"
+                        checked={hasView || hasEdit}
+                        disabled={locked || saving}
+                        onChange={(e) =>
+                          setCrmAccess(role.id, e.target.checked, e.target.checked ? hasEdit : false)
+                        }
+                      />
+                      CRM view
+                    </label>
+                    <label className={`flex items-center gap-2 ${locked ? "text-slate-400" : "text-slate-700"}`}>
+                      <input
+                        type="checkbox"
+                        checked={hasEdit}
+                        disabled={locked || saving}
+                        onChange={(e) =>
+                          setCrmAccess(role.id, e.target.checked ? true : hasView, e.target.checked)
+                        }
+                      />
+                      CRM edit
+                    </label>
+                  </div>
+                </div>
+              );
+            })}
         </div>
       </div>
     );

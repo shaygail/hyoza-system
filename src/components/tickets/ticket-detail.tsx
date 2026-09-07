@@ -9,7 +9,7 @@ import { SearchSelect } from "@/components/ui/search-select";
 import { formatDate } from "@/lib/utils";
 import { getActivityLabel } from "@/lib/activity-labels";
 import Link from "next/link";
-import { Paperclip, MessageSquare, Lock, Clock, Columns3 } from "lucide-react";
+import { Paperclip, MessageSquare, Lock, Clock, Columns3, UserPlus, X } from "lucide-react";
 
 interface TicketData {
   id: string;
@@ -29,7 +29,13 @@ interface TicketData {
   timeEntries?: { id: string; durationMinutes: number; notes: string | null; user: { name: string }; workType: { name: string } | null }[];
   asset?: { assetTag: string; name: string } | null;
   comments: { id: string; body: string; createdAt: string; author: { name: string }; onBehalfOfContact?: { name: string } | null }[];
-  internalNotes: { id: string; body: string; createdAt: string; author: { name: string } }[];
+  internalNotes: {
+    id: string;
+    body: string;
+    createdAt: string;
+    author: { name: string };
+    taggedUsers: { id: string; name: string; email: string }[];
+  }[];
   attachments: { id: string; fileName: string; sizeBytes: number; createdAt: string; uploadedBy: { name: string } }[];
   activities: { id: string; eventType: string; payload: string; visibility: string; createdAt: string; actor: { name: string } | null }[];
 }
@@ -77,6 +83,8 @@ export function TicketDetailClient({
   const [replyAs, setReplyAs] = useState<"agent" | "contact">("agent");
   const [replyError, setReplyError] = useState("");
   const [noteBody, setNoteBody] = useState("");
+  const [taggedAgentIds, setTaggedAgentIds] = useState<string[]>([]);
+  const [tagSearch, setTagSearch] = useState("");
   const [composeMode, setComposeMode] = useState<"reply" | "note" | null>(null);
   const [timelineFilter, setTimelineFilter] = useState<TimelineFilter>("all");
   const [resolveModal, setResolveModal] = useState<Transition | null>(null);
@@ -143,13 +151,26 @@ export function TicketDetailClient({
     await fetch(`/api/v1/tickets/${ticket.id}/internal-notes`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ body: noteBody }),
+      body: JSON.stringify({ body: noteBody, taggedUserIds: taggedAgentIds }),
     });
     setNoteBody("");
+    setTaggedAgentIds([]);
+    setTagSearch("");
     setComposeMode(null);
     setLoading(false);
     await refreshTicket();
   }
+
+  function toggleTaggedAgent(agentId: string) {
+    setTaggedAgentIds((current) =>
+      current.includes(agentId) ? current.filter((id) => id !== agentId) : [...current, agentId]
+    );
+  }
+
+  const tagCandidates = metadata.technicians.filter((technician) => {
+    const haystack = `${technician.name} ${technician.email}`.toLowerCase();
+    return haystack.includes(tagSearch.toLowerCase());
+  });
 
   async function handleTransition(transition: Transition) {
     const required: string[] = JSON.parse(transition.requiredFields);
@@ -329,9 +350,66 @@ export function TicketDetailClient({
             <div className="rounded-lg border-2 border-amber-200 bg-amber-50 p-4">
               <p className="mb-2 text-xs font-medium text-amber-700">Internal Note</p>
               <Textarea value={noteBody} onChange={(e) => setNoteBody(e.target.value)} placeholder="Type internal note..." />
+              <div className="mt-3">
+                <p className="mb-2 flex items-center gap-1 text-xs font-medium text-amber-700">
+                  <UserPlus className="h-3 w-3" />
+                  Tag agents (they will be emailed)
+                </p>
+                {taggedAgentIds.length > 0 && (
+                  <div className="mb-2 flex flex-wrap gap-1.5">
+                    {taggedAgentIds.map((agentId) => {
+                      const agent = metadata.technicians.find((t) => t.id === agentId);
+                      if (!agent) return null;
+                      return (
+                        <span
+                          key={agentId}
+                          className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800"
+                        >
+                          {agent.email}
+                          <button
+                            type="button"
+                            onClick={() => toggleTaggedAgent(agentId)}
+                            className="rounded-full hover:bg-amber-200"
+                            aria-label={`Remove ${agent.name}`}
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
+                <input
+                  type="text"
+                  value={tagSearch}
+                  onChange={(e) => setTagSearch(e.target.value)}
+                  placeholder="Search agents by name or email..."
+                  className="mb-2 w-full rounded-lg border border-amber-200 bg-white px-3 py-1.5 text-sm"
+                />
+                <div className="max-h-32 overflow-auto rounded-lg border border-amber-200 bg-white">
+                  {tagCandidates.length === 0 ? (
+                    <p className="px-3 py-2 text-xs text-slate-400">No agents found</p>
+                  ) : (
+                    tagCandidates.map((technician) => (
+                      <label
+                        key={technician.id}
+                        className="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm hover:bg-amber-50"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={taggedAgentIds.includes(technician.id)}
+                          onChange={() => toggleTaggedAgent(technician.id)}
+                        />
+                        <span className="font-medium text-slate-900">{technician.name}</span>
+                        <span className="text-xs text-slate-400">{technician.email}</span>
+                      </label>
+                    ))
+                  )}
+                </div>
+              </div>
               <div className="mt-2 flex gap-2">
                 <Button variant="internal" size="sm" onClick={handleInternalNote} disabled={loading}>Add Note</Button>
-                <Button variant="ghost" size="sm" onClick={() => setComposeMode(null)}>Cancel</Button>
+                <Button variant="ghost" size="sm" onClick={() => { setComposeMode(null); setTaggedAgentIds([]); setTagSearch(""); }}>Cancel</Button>
               </div>
             </div>
           )}
@@ -383,6 +461,12 @@ export function TicketDetailClient({
                         <span>{formatDate(item.data.createdAt)}</span>
                       </div>
                       <p className="mt-2 text-sm text-slate-700 whitespace-pre-wrap">{item.data.body}</p>
+                      {item.data.taggedUsers.length > 0 && (
+                        <p className="mt-2 text-xs text-amber-700">
+                          <span className="font-medium">Tagged:</span>{" "}
+                          {item.data.taggedUsers.map((u) => u.email).join(", ")}
+                        </p>
+                      )}
                     </div>
                   );
                 }

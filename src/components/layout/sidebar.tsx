@@ -22,16 +22,20 @@ const navItems = [
   { href: "/app/board", label: "Board", icon: Columns3 },
   { href: "/app/queues", label: "Queues", icon: ListOrdered },
   { href: "/app/tickets", label: "Tickets", icon: Ticket },
-  { href: "/app/customers", label: "Customers", icon: Users },
+  { href: "/app/customers", label: "CRM", icon: Users, permission: "customers.view" },
   { href: "/app/assets", label: "Assets", icon: HardDrive },
   { href: "/app/knowledge", label: "Knowledge", icon: BookOpen },
   { href: "/app/time", label: "Time", icon: Clock },
+  { href: "/app/admin/billing", label: "Billing", icon: BarChart3, permission: "billing.view" },
   { href: "/app/reports", label: "Reports", icon: BarChart3 },
   { href: "/app/admin", label: "Administration", icon: Settings },
 ];
 
-export function Sidebar() {
+export function Sidebar({ permissions = [] }: { permissions?: string[] }) {
   const pathname = usePathname();
+  const visibleItems = navItems.filter(
+    (item) => !("permission" in item) || !item.permission || permissions.includes(item.permission)
+  );
 
   return (
     <aside className="flex w-64 flex-col border-r border-slate-200 bg-white">
@@ -45,7 +49,7 @@ export function Sidebar() {
         </div>
       </div>
       <nav className="flex-1 space-y-1 p-3">
-        {navItems.map((item) => {
+        {visibleItems.map((item) => {
           const active = pathname.startsWith(item.href);
           const Icon = item.icon;
           return (

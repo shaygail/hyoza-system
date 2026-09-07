@@ -178,17 +178,24 @@ export async function seedPhase1C() {
   });
 
   if (org1) {
-    await prisma.serviceAgreement.create({
-      data: {
-        tenantId: tenant.id,
-        organisationId: org1.id,
-        name: "ABC Limited Support Agreement",
-        monthlyMinutesAllowance: 600,
-        responseMinutes: 240,
-        resolutionMinutes: 4320,
-        isActive: true,
-      },
+    const existingContract = await prisma.contract.findFirst({
+      where: { tenantId: tenant.id, organisationId: org1.id },
     });
+    if (!existingContract) {
+      await prisma.contract.create({
+        data: {
+          tenantId: tenant.id,
+          organisationId: org1.id,
+          name: "ABC Limited Support Agreement",
+          contractType: "block_hours",
+          status: "active",
+          monthlyMinutes: 600,
+          responseMinutes: 240,
+          resolutionMinutes: 4320,
+          overageHourlyRate: 150,
+        },
+      });
+    }
 
     await prisma.emailMailbox.create({
       data: {

@@ -18,11 +18,15 @@ export type TicketView = "all" | "my" | "unassigned" | "open" | "in_progress" | 
 export async function listTickets(
   tenantId: string,
   view: TicketView = "all",
-  userId?: string
+  userId?: string,
+  options?: { maxSecurityLevel?: number }
 ) {
   const where: Record<string, unknown> = {
     tenantId,
     deletedAt: null,
+    ...(options?.maxSecurityLevel != null
+      ? { minSecurityLevel: { lte: options.maxSecurityLevel } }
+      : {}),
   };
 
   switch (view) {
@@ -97,7 +101,13 @@ export async function getTicket(tenantId: string, id: string) {
         include: { author: true, onBehalfOfContact: true },
         orderBy: { createdAt: "asc" },
       },
-      internalNotes: { include: { author: true }, orderBy: { createdAt: "asc" } },
+      internalNotes: {
+        include: {
+          author: true,
+          tags: { include: { user: { select: { id: true, name: true, email: true } } } },
+        },
+        orderBy: { createdAt: "asc" },
+      },
       attachments: { include: { uploadedBy: true }, orderBy: { createdAt: "asc" } },
       activities: { include: { actor: true }, orderBy: { createdAt: "asc" } },
       timeEntries: { include: { user: true, workType: true }, orderBy: { createdAt: "desc" } },

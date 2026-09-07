@@ -72,18 +72,68 @@ export async function addCommentAsContact(
   });
 }
 
-export async function addInternalNote(ticketId: string, authorId: string, body: string) {
+export async function addInternalNote(
+  ticketId: string,
+  authorId: string,
+  body: string,
+  options?: { taggedUserIds?: string[] }
+) {
+  const requestedIds = [...new Set(options?.taggedUserIds ?? [])];
+  let taggedUserIds: string[] = [];
+
+  if (requestedIds.length > 0) {
+    const staff = await prisma.user.findMany({
+      where: {
+        id: { in: requestedIds },
+        isActive: true,
+        NOT: { userRoles: { some: { role: { code: "customer" } } } },
+      },
+      select: { id: true },
+    });
+    taggedUserIds = staff.map((u) => u.id);
+  }
+
   const note = await prisma.ticketInternalNote.create({
-    data: { ticketId, authorId, body },
-    include: { author: true },
+    data: {
+      ticketId,
+      authorId,
+      body,
+      ...(taggedUserIds.length > 0
+        ? { tags: { create: taggedUserIds.map((userId) => ({ userId })) } }
+        : {}),
+    },
+    include: {
+      author: true,
+      tags: { include: { user: { select: { id: true, name: true, email: true } } } },
+    },
   });
 
   await logActivity({
     ticketId,
     actorId: authorId,
     eventType: "internal_note.added",
+    payload: taggedUserIds.length > 0 ? { taggedCount: taggedUserIds.length } : {},
     visibility: "internal",
   });
+
+  if (taggedUserIds.length > 0) {
+    const [ticket, author] = await Promise.all([
+      prisma.ticket.findUnique({ where: { id: ticketId } }),
+      prisma.user.findUnique({ where: { id: authorId }, select: { name: true } }),
+    ]);
+
+    if (ticket) {
+      const { notifyAgentsTaggedInNote } = await import("@/domain/notifications");
+      await notifyAgentsTaggedInNote({
+        ticketId,
+        ticketNumber: ticket.ticketNumber,
+        subject: ticket.subject,
+        notePreview: body,
+        authorName: author?.name ?? "An agent",
+        taggedUserIds: taggedUserIds.filter((id) => id !== authorId),
+      });
+    }
+  }
 
   return note;
 }

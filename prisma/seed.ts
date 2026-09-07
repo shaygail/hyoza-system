@@ -12,14 +12,25 @@ const PERMISSIONS = [
   { key: "tickets.delete", description: "Delete tickets" },
   { key: "tickets.close", description: "Close tickets" },
   { key: "tickets.internal_notes", description: "Add internal notes" },
-  { key: "customers.view", description: "View customers" },
-  { key: "customers.edit", description: "Edit customers" },
+  { key: "customers.view", description: "View CRM accounts and contacts" },
+  { key: "customers.edit", description: "Edit CRM accounts and contacts" },
+  { key: "contracts.view", description: "View contracts" },
+  { key: "contracts.edit", description: "Create and edit contracts" },
+  { key: "billing.view", description: "View billing periods and invoices" },
+  { key: "billing.edit", description: "Manage billing and approve invoices" },
   { key: "admin.users", description: "Manage users" },
   { key: "admin.settings", description: "Manage settings" },
+  { key: "admin.grant_crm", description: "Grant or revoke CRM access for roles" },
+  { key: "admin.security", description: "Manage security levels, browse schemes, permission matrix" },
 ];
 
+const ALL_EXCEPT_SUPER_ONLY = PERMISSIONS.map((p) => p.key).filter(
+  (k) => k !== "admin.grant_crm" && k !== "admin.security"
+);
+
 const ROLE_PERMISSIONS: Record<string, string[]> = {
-  administrator: PERMISSIONS.map((p) => p.key),
+  super_admin: PERMISSIONS.map((p) => p.key),
+  administrator: ALL_EXCEPT_SUPER_ONLY,
   agent: [
     "tickets.view",
     "tickets.create",
@@ -27,7 +38,6 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     "tickets.assign",
     "tickets.close",
     "tickets.internal_notes",
-    "customers.view",
   ],
   senior_agent: [
     "tickets.view",
@@ -40,6 +50,7 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     "tickets.internal_notes",
     "customers.view",
     "customers.edit",
+    "contracts.view",
   ],
   team_leader: [
     "tickets.view",
@@ -51,6 +62,8 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     "tickets.internal_notes",
     "customers.view",
     "customers.edit",
+    "contracts.view",
+    "billing.view",
   ],
   manager: [
     "tickets.view",
@@ -62,12 +75,17 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     "tickets.internal_notes",
     "customers.view",
     "customers.edit",
+    "contracts.view",
+    "contracts.edit",
+    "billing.view",
+    "billing.edit",
   ],
   customer: ["tickets.view", "tickets.create", "tickets.close"],
 };
 
 function logDemoLogins() {
   console.log("Demo logins:");
+  console.log("  superadmin@ourcloud.local / superadmin123");
   console.log("  admin@ourcloud.local / admin123");
   console.log("  agent@ourcloud.local / agent123");
 }
@@ -78,7 +96,7 @@ async function main() {
   });
 
   if (existingUser) {
-    console.log("Database already seeded — skipping.");
+    console.log("Database already seeded — skipping core seed.");
     logDemoLogins();
     const { seedPhase1B } = await import("./seed-phase1b");
     await seedPhase1B();
@@ -86,6 +104,10 @@ async function main() {
     await seedPhase1C();
     const { seedRouting } = await import("./seed-routing");
     await seedRouting();
+    const { seedCrmAccessControl } = await import("./seed-crm-access");
+    await seedCrmAccessControl();
+    const { seedPsa } = await import("./seed-psa");
+    await seedPsa();
     return;
   }
 
@@ -352,6 +374,10 @@ async function main() {
   await seedPhase1C();
   const { seedRouting } = await import("./seed-routing");
   await seedRouting();
+  const { seedCrmAccessControl } = await import("./seed-crm-access");
+  await seedCrmAccessControl();
+  const { seedPsa } = await import("./seed-psa");
+  await seedPsa();
 }
 
 main()

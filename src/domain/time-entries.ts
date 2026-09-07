@@ -1,18 +1,25 @@
 import { prisma } from "@/lib/prisma";
+import { getActiveContractForOrganisation } from "@/domain/contracts";
 import { logActivity } from "@/domain/activity";
 
-export async function listTimeEntries(tenantId: string, filters?: { ticketId?: string; userId?: string }) {
+export async function listTimeEntries(
+  tenantId: string,
+  filters?: { ticketId?: string; userId?: string; status?: string; contractId?: string }
+) {
   return prisma.timeEntry.findMany({
     where: {
       tenantId,
       ...(filters?.ticketId ? { ticketId: filters.ticketId } : {}),
       ...(filters?.userId ? { userId: filters.userId } : {}),
+      ...(filters?.status ? { status: filters.status } : {}),
+      ...(filters?.contractId ? { contractId: filters.contractId } : {}),
     },
     include: {
       ticket: { select: { id: true, ticketNumber: true, subject: true } },
       user: { select: { id: true, name: true } },
       workType: true,
       organisation: { select: { id: true, name: true } },
+      contract: { select: { id: true, name: true, contractType: true } },
     },
     orderBy: { createdAt: "desc" },
   });
@@ -29,21 +36,30 @@ export async function createTimeEntry(params: {
   notes?: string;
   startedAt?: Date;
   endedAt?: Date;
+  contractId?: string;
 }) {
+  let contractId = params.contractId;
+  if (!contractId) {
+    const active = await getActiveContractForOrganisation(params.tenantId, params.organisationId);
+    contractId = active?.id;
+  }
+
   const entry = await prisma.timeEntry.create({
     data: {
       tenantId: params.tenantId,
       ticketId: params.ticketId,
       userId: params.userId,
       organisationId: params.organisationId,
+      contractId,
       durationMinutes: params.durationMinutes,
       workTypeId: params.workTypeId,
       isBillable: params.isBillable ?? true,
       notes: params.notes,
       startedAt: params.startedAt,
       endedAt: params.endedAt,
+      status: "submitted",
     },
-    include: { user: true, workType: true },
+    include: { user: true, workType: true, contract: true },
   });
 
   await logActivity({
@@ -55,6 +71,36 @@ export async function createTimeEntry(params: {
   });
 
   return entry;
+}
+
+export async function approveTimeEntry(tenantId: string, entryId: string, approverId: string) {
+  const entry = await prisma.timeEntry.findFirst({ where: { id: entryId, tenantId } });
+  if (!entry) throw new Error("Time entry not found");
+
+  return prisma.timeEntry.update({
+    where: { id: entryId },
+    data: {
+      status: "approved",
+      approvedById: approverId,
+      approvedAt: new Date(),
+    },
+    include: { user: true, workType: true, ticket: true },
+  });
+}
+
+export async function rejectTimeEntry(tenantId: string, entryId: string, approverId: string) {
+  const entry = await prisma.timeEntry.findFirst({ where: { id: entryId, tenantId } });
+  if (!entry) throw new Error("Time entry not found");
+
+  return prisma.timeEntry.update({
+    where: { id: entryId },
+    data: {
+      status: "rejected",
+      approvedById: approverId,
+      approvedAt: new Date(),
+    },
+    include: { user: true, workType: true, ticket: true },
+  });
 }
 
 export async function getTicketTimeTotal(ticketId: string) {

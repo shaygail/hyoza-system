@@ -33,9 +33,15 @@ model Tenant {
   automationRules   AutomationRule[]
   kbCategories      KbCategory[]
   kbArticles        KbArticle[]
-  serviceAgreements ServiceAgreement[]
+  contracts         Contract[]
+  rateCards         RateCard[]
   customFields      CustomFieldDefinition[]
   emailMailboxes    EmailMailbox[]
+  billingPeriods    BillingPeriod[]
+  invoices          Invoice[]
+  xeroConnection    XeroConnection?
+  browseSchemes     BrowseScheme[]
+  securityAudits    SecurityAuditLog[]
 }
 
 model TicketSequence {
@@ -64,6 +70,7 @@ model User {
   createdTickets      Ticket[]            @relation("TicketCreator")
   comments            TicketComment[]
   internalNotes       TicketInternalNote[]
+  internalNoteTags    TicketInternalNoteTag[]
   activities          TicketActivity[]
   uploadedAttachments TicketAttachment[]
   timeEntries         TimeEntry[]
@@ -77,17 +84,19 @@ model User {
 }
 
 model Role {
-  id          String   @id @default(cuid())
-  tenantId    String
-  name        String
-  code        String
-  description String?
-  isSystem    Boolean  @default(false)
-  createdAt   DateTime @default(now())
+  id            String   @id @default(cuid())
+  tenantId      String
+  name          String
+  code          String
+  description   String?
+  isSystem      Boolean  @default(false)
+  securityLevel Int      @default(1)
+  createdAt     DateTime @default(now())
 
   tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   rolePermissions RolePermission[]
   userRoles       UserRole[]
+  browseSchemes   BrowseScheme[]
 
   @@unique([tenantId, code])
 }
@@ -145,25 +154,32 @@ model TeamMember {
 }
 
 model Organisation {
-  id        String   @id @default(cuid())
-  tenantId  String
-  name      String
-  accountCode String?
-  status    String   @default("active")
-  phone     String?
-  email     String?
-  address   String?
-  notes     String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id              String   @id @default(cuid())
+  tenantId        String
+  name            String
+  accountCode     String?
+  status          String   @default("active")
+  phone           String?
+  email           String?
+  address         String?
+  notes           String?
+  taxId           String?
+  billingEmail    String?
+  paymentTerms    String?
+  xeroContactId   String?
+  minSecurityLevel Int     @default(1)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
-  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  contacts Contact[]
-  tickets           Ticket[]
-  assets            Asset[]
-  timeEntries       TimeEntry[]
-  serviceAgreements ServiceAgreement[]
-  emailMailboxes    EmailMailbox[]
+  tenant         Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contacts       Contact[]
+  tickets        Ticket[]
+  assets         Asset[]
+  timeEntries    TimeEntry[]
+  contracts      Contract[]
+  billingPeriods BillingPeriod[]
+  invoices       Invoice[]
+  emailMailboxes EmailMailbox[]
 
   @@index([tenantId])
 }
@@ -352,15 +368,16 @@ model UserQueuePin {
 }
 
 model WorkType {
-  id                 String @id @default(cuid())
-  tenantId           String
-  name               String
-  code               String
-  isBillableDefault  Boolean @default(true)
-  sortOrder          Int    @default(0)
+  id                String  @id @default(cuid())
+  tenantId          String
+  name              String
+  code              String
+  isBillableDefault Boolean @default(true)
+  sortOrder         Int     @default(0)
 
-  tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  timeEntries TimeEntry[]
+  tenant         Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  timeEntries    TimeEntry[]
+  rateCardLines  RateCardLine[]
 
   @@unique([tenantId, code])
 }
@@ -371,6 +388,8 @@ model TimeEntry {
   ticketId        String
   userId          String
   organisationId  String
+  contractId      String?
+  billingPeriodId String?
   workTypeId      String?
   startedAt       DateTime?
   endedAt         DateTime?
@@ -378,17 +397,23 @@ model TimeEntry {
   isBillable      Boolean   @default(true)
   notes           String?
   status          String    @default("submitted")
+  approvedById    String?
+  approvedAt      DateTime?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
-  ticket       Ticket       @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  user         User         @relation(fields: [userId], references: [id])
-  organisation Organisation @relation(fields: [organisationId], references: [id])
-  workType     WorkType?    @relation(fields: [workTypeId], references: [id])
+  ticket        Ticket         @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  user          User           @relation(fields: [userId], references: [id])
+  organisation  Organisation   @relation(fields: [organisationId], references: [id])
+  workType      WorkType?      @relation(fields: [workTypeId], references: [id])
+  contract      Contract?      @relation(fields: [contractId], references: [id])
+  billingPeriod BillingPeriod? @relation(fields: [billingPeriodId], references: [id])
 
   @@index([ticketId])
   @@index([userId])
   @@index([organisationId])
+  @@index([contractId])
+  @@index([status])
 }
 
 model BusinessCalendar {
@@ -496,24 +521,197 @@ model KbArticle {
   @@index([tenantId, status])
 }
 
-model ServiceAgreement {
-  id                      String    @id @default(cuid())
-  tenantId                String
-  organisationId          String
-  name                    String
-  monthlyMinutesAllowance Int?
-  responseMinutes         Int?
-  resolutionMinutes       Int?
-  isActive                Boolean   @default(true)
-  startDate               DateTime  @default(now())
-  endDate                 DateTime?
-  createdAt               DateTime  @default(now())
+model Contract {
+  id                String    @id @default(cuid())
+  tenantId          String
+  organisationId    String
+  rateCardId        String?
+  name              String
+  contractType      String    @default("block_hours")
+  status            String    @default("draft")
+  currency          String    @default("NZD")
+  notes             String?
+  monthlyMinutes    Int?
+  retainerAmount    Float?
+  overageHourlyRate Float?
+  responseMinutes   Int?
+  resolutionMinutes Int?
+  minSecurityLevel  Int       @default(1)
+  startDate         DateTime  @default(now())
+  endDate           DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
-  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  tenant         Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  organisation   Organisation    @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  rateCard       RateCard?       @relation(fields: [rateCardId], references: [id])
+  allowances     ContractAllowance[]
+  timeEntries    TimeEntry[]
+  billingPeriods BillingPeriod[]
+  invoices       Invoice[]
 
   @@index([tenantId])
   @@index([organisationId])
+  @@index([status])
+}
+
+model ContractAllowance {
+  id              String   @id @default(cuid())
+  contractId      String
+  periodLabel     String
+  allowanceMinutes Int
+  usedMinutes     Int      @default(0)
+  rolloverMinutes Int      @default(0)
+  periodStart     DateTime
+  periodEnd       DateTime
+  createdAt       DateTime @default(now())
+
+  contract Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@index([contractId])
+}
+
+model RateCard {
+  id        String   @id @default(cuid())
+  tenantId  String
+  name      String
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant    Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  lines     RateCardLine[]
+  contracts Contract[]
+
+  @@index([tenantId])
+}
+
+model RateCardLine {
+  id                   String @id @default(cuid())
+  rateCardId           String
+  workTypeId           String
+  hourlyRate           Float
+  afterHoursMultiplier Float  @default(1.5)
+
+  rateCard RateCard @relation(fields: [rateCardId], references: [id], onDelete: Cascade)
+  workType WorkType @relation(fields: [workTypeId], references: [id])
+
+  @@unique([rateCardId, workTypeId])
+}
+
+model BillingPeriod {
+  id             String    @id @default(cuid())
+  tenantId       String
+  organisationId String
+  contractId     String
+  label          String
+  status         String    @default("open")
+  startDate      DateTime
+  endDate        DateTime
+  closedAt       DateTime?
+  createdAt      DateTime  @default(now())
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  contract     Contract     @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  timeEntries  TimeEntry[]
+  invoices     Invoice[]
+
+  @@index([tenantId])
+  @@index([contractId])
+  @@index([status])
+}
+
+model Invoice {
+  id              String    @id @default(cuid())
+  tenantId        String
+  organisationId  String
+  contractId      String?
+  billingPeriodId String?
+  invoiceNumber   String
+  status          String    @default("draft")
+  currency        String    @default("NZD")
+  subtotal        Float     @default(0)
+  taxAmount       Float     @default(0)
+  total           Float     @default(0)
+  notes           String?
+  xeroInvoiceId   String?
+  issuedAt        DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  organisation  Organisation   @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  contract      Contract?      @relation(fields: [contractId], references: [id])
+  billingPeriod BillingPeriod? @relation(fields: [billingPeriodId], references: [id])
+  lines         InvoiceLine[]
+
+  @@unique([tenantId, invoiceNumber])
+  @@index([tenantId])
+  @@index([organisationId])
+  @@index([status])
+}
+
+model InvoiceLine {
+  id          String  @id @default(cuid())
+  invoiceId   String
+  description String
+  quantity    Float   @default(1)
+  unitAmount  Float
+  lineTotal   Float
+  lineType    String  @default("time")
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+}
+
+model XeroConnection {
+  id           String    @id @default(cuid())
+  tenantId     String    @unique
+  tenantName   String?
+  accessToken  String?
+  refreshToken String?
+  expiresAt    DateTime?
+  xeroTenantId String?
+  isConnected  Boolean   @default(false)
+  lastSyncedAt DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+model BrowseScheme {
+  id          String   @id @default(cuid())
+  tenantId    String
+  name        String
+  code        String
+  description String?
+  rules       String   @default("{}")
+  roleId      String?
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  role   Role?  @relation(fields: [roleId], references: [id])
+
+  @@unique([tenantId, code])
+}
+
+model SecurityAuditLog {
+  id        String   @id @default(cuid())
+  tenantId  String
+  actorId   String?
+  action    String
+  targetType String
+  targetId  String?
+  detail    String   @default("{}")
+  createdAt DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, createdAt])
 }
 
 model CustomFieldDefinition {
@@ -644,6 +842,7 @@ model Ticket {
   resolutionSummary String?
   parentTicketId    String?
   createdById       String
+  minSecurityLevel  Int       @default(1)
   deletedAt         DateTime?
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
@@ -704,10 +903,24 @@ model TicketInternalNote {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  author User   @relation(fields: [authorId], references: [id])
+  ticket Ticket                  @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  author User                    @relation(fields: [authorId], references: [id])
+  tags   TicketInternalNoteTag[]
 
   @@index([ticketId, createdAt])
+}
+
+model TicketInternalNoteTag {
+  id        String   @id @default(cuid())
+  noteId    String
+  userId    String
+  createdAt DateTime @default(now())
+
+  note TicketInternalNote @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  user User               @relation(fields: [userId], references: [id])
+
+  @@unique([noteId, userId])
+  @@index([userId])
 }
 
 model TicketAttachment {

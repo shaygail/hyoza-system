@@ -11,8 +11,11 @@ const tabs = [
   { href: "/app/admin/automation", label: "Automation" },
   { href: "/app/admin/sla", label: "SLA" },
   { href: "/app/admin/custom-fields", label: "Custom Fields" },
-  { href: "/app/admin/roles", label: "Custom Roles" },
-  { href: "/app/admin/agreements", label: "Agreements" },
+  { href: "/app/admin/roles", label: "CRM Access" },
+  { href: "/app/admin/security", label: "Security" },
+  { href: "/app/admin/contracts", label: "Contracts" },
+  { href: "/app/admin/billing", label: "Billing" },
+  { href: "/app/admin/xero", label: "Xero" },
   { href: "/app/admin/email", label: "Email" },
 ];
 
