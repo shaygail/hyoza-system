@@ -345,8 +345,8 @@ export function TicketDetailClient({
   });
 
   return (
-    <div className="space-y-4">
-      <nav className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white px-6 py-3.5 text-xs">
+    <div className="-m-6 min-h-full bg-[#f1f5f9] p-6">
+      <nav className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white px-6 py-3.5 text-xs">
         <Link href="/app/tickets" className="font-medium text-ourcloud-700 hover:underline">
           Tickets
         </Link>

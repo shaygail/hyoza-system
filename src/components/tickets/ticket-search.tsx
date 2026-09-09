@@ -7,7 +7,7 @@ import { Input, Select, Label } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { SoftBadge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/utils";
-import { Filter, X } from "lucide-react";
+import { X } from "lucide-react";
 
 interface Ticket {
   id: string;
@@ -117,8 +117,8 @@ export function TicketSearch({
   ];
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-4 rounded-xl border border-slate-200 bg-white px-6 py-4">
+    <div className="-m-6 flex min-h-full flex-col bg-[#f1f5f9]">
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 bg-white px-6 py-4">
         <div>
           <h1 className="text-[22px] font-semibold text-slate-900">Tickets</h1>
           <p className="mt-1 text-xs text-slate-500">
@@ -127,7 +127,6 @@ export function TicketSearch({
         </div>
         <div className="flex items-center gap-2">
           <Button variant="secondary" size="sm" onClick={() => setShowFilters((v) => !v)}>
-            <Filter className="mr-1.5 h-3.5 w-3.5" />
             Filters
           </Button>
           <Link href="/app/tickets/new">
@@ -136,6 +135,7 @@ export function TicketSearch({
         </div>
       </div>
 
+      <div className="space-y-4 p-6">
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         {kpisCards.map((card) => (
           <div
@@ -339,6 +339,7 @@ export function TicketSearch({
             Updated {formatDate(tickets[0]?.updatedAt)} · {tickets.length} shown
           </p>
         )}
+      </div>
       </div>
     </div>
   );

@@ -66,7 +66,8 @@ export async function seedMspDemo() {
     include: { tickets: { take: 1 } },
   });
   if (existing && existing.tickets.length > 0) {
-    console.log("MSP demo data already seeded — skipping.");
+    console.log("MSP demo data already seeded — ensuring queue showcase tickets…");
+    await seedQueueShowcaseTickets(tenant.id);
     return;
   }
 
@@ -386,11 +387,14 @@ export async function seedMspDemo() {
     statusId: string;
     priorityCode?: string;
     typeCode?: string;
-    assigneeId?: string;
+    assigneeId?: string | null;
     assetId?: string;
+    categoryId?: string;
     createdAt: Date;
     resolvedAt?: Date;
     closedAt?: Date;
+    responseDueAt?: Date;
+    resolutionDueAt?: Date;
   }) {
     const ticketNumber = await nextTicketNumber(tenant.id);
     return prisma.ticket.create({
@@ -401,17 +405,20 @@ export async function seedMspDemo() {
         description: opts.description,
         organisationId: opts.orgId,
         contactId: opts.contactId,
-        assigneeId: opts.assigneeId ?? agent.id,
+        assigneeId: opts.assigneeId === null ? null : opts.assigneeId ?? agent.id,
         teamId: team?.id,
         statusId: opts.statusId,
         priorityId: priority[opts.priorityCode ?? "medium"] ?? priorities[0].id,
         ticketTypeId: type[opts.typeCode ?? "service_request"] ?? ticketTypes[0].id,
+        categoryId: opts.categoryId,
         assetId: opts.assetId,
         createdById,
         createdAt: opts.createdAt,
         updatedAt: opts.createdAt,
         resolvedAt: opts.resolvedAt,
         closedAt: opts.closedAt,
+        responseDueAt: opts.responseDueAt,
+        resolutionDueAt: opts.resolutionDueAt,
         source: "agent",
       },
     });
@@ -711,6 +718,340 @@ export async function seedMspDemo() {
   console.log("  senior@ourcloud.local   — Senior Agent");
   console.log("  lead@ourcloud.local     — Team Leader");
   console.log("Demo orgs: MSP-ONBOARD, MSP-ACTIVE, MSP-RENEW, MSP-OFFBOARD");
+
+  await seedQueueShowcaseTickets(tenant.id);
+}
+
+/** Varied open/waiting tickets so the queue UI shows priority, status, SLA, and assignee differences. */
+export async function seedQueueShowcaseTickets(tenantId?: string) {
+  const tenant = tenantId
+    ? await prisma.tenant.findUnique({ where: { id: tenantId } })
+    : await prisma.tenant.findFirst({ where: { slug: "ourcloud" } });
+  if (!tenant) {
+    console.log("No tenant found — run full seed first.");
+    return;
+  }
+
+  const existingCount = await prisma.ticket.count({
+    where: { tenantId: tenant.id, subject: { startsWith: "[Queue]" } },
+  });
+  if (existingCount > 0) {
+    console.log(`Queue showcase already present (${existingCount} tickets) — skipping.`);
+    return;
+  }
+
+  const hoursFromNow = (h: number) => new Date(Date.now() + h * 60 * 60 * 1000);
+  const hoursAgo = (h: number) => new Date(Date.now() - h * 60 * 60 * 1000);
+
+  const [
+    admin,
+    agent,
+    senior,
+    lead,
+    openStatus,
+    inProgress,
+    waitingCustomer,
+    waitingVendor,
+    priorities,
+    ticketTypes,
+    team,
+    orgs,
+  ] = await Promise.all([
+    prisma.user.findFirst({ where: { tenantId: tenant.id, email: "admin@ourcloud.local" } }),
+    prisma.user.findFirst({ where: { tenantId: tenant.id, email: "agent@ourcloud.local" } }),
+    prisma.user.findFirst({ where: { tenantId: tenant.id, email: "senior@ourcloud.local" } }),
+    prisma.user.findFirst({ where: { tenantId: tenant.id, email: "lead@ourcloud.local" } }),
+    prisma.workflowStatus.findFirst({ where: { code: "open", workflow: { tenantId: tenant.id } } }),
+    prisma.workflowStatus.findFirst({ where: { code: "in_progress", workflow: { tenantId: tenant.id } } }),
+    prisma.workflowStatus.findFirst({
+      where: { code: "waiting_customer", workflow: { tenantId: tenant.id } },
+    }),
+    prisma.workflowStatus.findFirst({
+      where: { code: "waiting_vendor", workflow: { tenantId: tenant.id } },
+    }),
+    prisma.priority.findMany({ where: { tenantId: tenant.id } }),
+    prisma.ticketType.findMany({ where: { tenantId: tenant.id } }),
+    prisma.team.findFirst({ where: { tenantId: tenant.id } }),
+    prisma.organisation.findMany({
+      where: {
+        tenantId: tenant.id,
+        accountCode: { in: ["MSP-ACTIVE", "MSP-ONBOARD", "MSP-RENEW", "MSP-OFFBOARD"] },
+      },
+      include: { contacts: { take: 1 } },
+    }),
+  ]);
+
+  if (!admin || !agent || !openStatus || !inProgress || !waitingCustomer || !waitingVendor) {
+    console.log("Core seed data missing — run npm run db:seed first.");
+    return;
+  }
+
+  let organisations = orgs;
+  if (organisations.length === 0) {
+    organisations = await prisma.organisation.findMany({
+      where: { tenantId: tenant.id },
+      take: 4,
+      include: { contacts: { take: 1 } },
+    });
+  }
+  if (organisations.length === 0) {
+    console.log("No organisations found — cannot seed queue showcase.");
+    return;
+  }
+
+  const priority = Object.fromEntries(priorities.map((p) => [p.code, p.id]));
+  const type = Object.fromEntries(ticketTypes.map((t) => [t.code, t.id]));
+  const byCode = Object.fromEntries(organisations.map((o) => [o.accountCode ?? o.id, o]));
+  const harbour = byCode["MSP-ACTIVE"] ?? organisations[0];
+  const northwind = byCode["MSP-ONBOARD"] ?? organisations[0];
+  const steel = byCode["MSP-RENEW"] ?? organisations[Math.min(1, organisations.length - 1)];
+  const sunset = byCode["MSP-OFFBOARD"] ?? organisations[organisations.length - 1];
+
+  const contactOf = (org: (typeof organisations)[0]) => org.contacts[0]?.id;
+
+  type Showcase = {
+    org: (typeof organisations)[0];
+    subject: string;
+    description: string;
+    statusId: string;
+    priorityCode: string;
+    typeCode: string;
+    assigneeId: string | null;
+    createdAt: Date;
+    responseDueAt?: Date;
+    resolutionDueAt?: Date;
+  };
+
+  const showcase: Showcase[] = [
+    {
+      org: harbour,
+      subject: "[Queue] VPN gateway down — all remote sites offline",
+      description: "Users cannot connect via VPN since 07:40. Critical outage for Harbour.",
+      statusId: openStatus.id,
+      priorityCode: "critical",
+      typeCode: "incident",
+      assigneeId: null,
+      createdAt: hoursAgo(6),
+      responseDueAt: hoursAgo(4),
+      resolutionDueAt: hoursAgo(1),
+    },
+    {
+      org: harbour,
+      subject: "[Queue] Exchange Online mail flow delayed",
+      description: "Outbound mail queue building; message trace shows delays > 30 minutes.",
+      statusId: inProgress.id,
+      priorityCode: "critical",
+      typeCode: "incident",
+      assigneeId: agent.id,
+      createdAt: hoursAgo(3),
+      responseDueAt: hoursAgo(2),
+      resolutionDueAt: hoursFromNow(2),
+    },
+    {
+      org: steel,
+      subject: "[Queue] CEO laptop won't boot after update",
+      description: "BitLocker recovery needed; executive travel tomorrow morning.",
+      statusId: openStatus.id,
+      priorityCode: "high",
+      typeCode: "incident",
+      assigneeId: senior?.id ?? agent.id,
+      createdAt: hoursAgo(8),
+      responseDueAt: hoursAgo(5),
+      resolutionDueAt: hoursAgo(2),
+    },
+    {
+      org: northwind,
+      subject: "[Queue] Firewall rule change for new warehouse",
+      description: "Allow HTTPS and RDP from warehouse VLAN to HQ DC.",
+      statusId: inProgress.id,
+      priorityCode: "high",
+      typeCode: "service_request",
+      assigneeId: lead?.id ?? admin.id,
+      createdAt: hoursAgo(20),
+      responseDueAt: hoursAgo(12),
+      resolutionDueAt: hoursFromNow(18),
+    },
+    {
+      org: harbour,
+      subject: "[Queue] Need approval for Adobe Creative Cloud",
+      description: "Design team requested 4 seats. Waiting on cost centre approval.",
+      statusId: waitingCustomer.id,
+      priorityCode: "medium",
+      typeCode: "service_request",
+      assigneeId: agent.id,
+      createdAt: hoursAgo(48),
+      responseDueAt: hoursAgo(40),
+      resolutionDueAt: hoursFromNow(72),
+    },
+    {
+      org: harbour,
+      subject: "[Queue] Awaiting Dell RMA for failed disk",
+      description: "RAID degraded on file server. Replacement disk ordered; ETA Friday.",
+      statusId: waitingVendor.id,
+      priorityCode: "high",
+      typeCode: "incident",
+      assigneeId: admin.id,
+      createdAt: hoursAgo(72),
+      responseDueAt: hoursAgo(60),
+      resolutionDueAt: hoursFromNow(48),
+    },
+    {
+      org: sunset,
+      subject: "[Queue] Update printer drivers on floor 2",
+      description: "New Xerox queue not installing on Windows 11 laptops.",
+      statusId: openStatus.id,
+      priorityCode: "low",
+      typeCode: "service_request",
+      assigneeId: null,
+      createdAt: hoursAgo(10),
+      responseDueAt: hoursFromNow(48),
+      resolutionDueAt: hoursFromNow(120),
+    },
+    {
+      org: northwind,
+      subject: "[Queue] New starter — mailbox and security groups",
+      description: "Onboard Priya Patel starting Monday. Standard M365 + VPN.",
+      statusId: openStatus.id,
+      priorityCode: "medium",
+      typeCode: "service_request",
+      assigneeId: null,
+      createdAt: hoursAgo(4),
+      responseDueAt: hoursFromNow(8),
+      resolutionDueAt: hoursFromNow(36),
+    },
+    {
+      org: steel,
+      subject: "[Queue] Waiting on customer for MFA reset proof",
+      description: "Requested photo ID before resetting MFA. No reply for 2 days — SLA at risk.",
+      statusId: waitingCustomer.id,
+      priorityCode: "high",
+      typeCode: "incident",
+      assigneeId: agent.id,
+      createdAt: hoursAgo(50),
+      responseDueAt: hoursAgo(46),
+      resolutionDueAt: hoursAgo(5),
+    },
+    {
+      org: harbour,
+      subject: "[Queue] SharePoint site permissions broken",
+      description: "Finance team cannot open budget library after migration.",
+      statusId: inProgress.id,
+      priorityCode: "medium",
+      typeCode: "incident",
+      assigneeId: senior?.id ?? agent.id,
+      createdAt: hoursAgo(14),
+      responseDueAt: hoursAgo(10),
+      resolutionDueAt: hoursFromNow(10),
+    },
+    {
+      org: northwind,
+      subject: "[Queue] Wi-Fi dead spots in boardroom",
+      description: "AP coverage survey requested; not urgent.",
+      statusId: openStatus.id,
+      priorityCode: "low",
+      typeCode: "service_request",
+      assigneeId: lead?.id ?? agent.id,
+      createdAt: hoursAgo(30),
+      resolutionDueAt: hoursFromNow(200),
+    },
+    {
+      org: sunset,
+      subject: "[Queue] Password reset storm after phishing drill",
+      description: "Helpdesk flooded with lockouts. Need coordinated unlock batch.",
+      statusId: openStatus.id,
+      priorityCode: "critical",
+      typeCode: "incident",
+      assigneeId: admin.id,
+      createdAt: hoursAgo(1),
+      responseDueAt: hoursFromNow(0.5),
+      resolutionDueAt: hoursFromNow(4),
+    },
+    {
+      org: harbour,
+      subject: "[Queue] Order replacement docking stations",
+      description: "Three docks failed this quarter. Procurement form attached.",
+      statusId: waitingVendor.id,
+      priorityCode: "low",
+      typeCode: "service_request",
+      assigneeId: agent.id,
+      createdAt: hoursAgo(96),
+      resolutionDueAt: hoursFromNow(160),
+    },
+    {
+      org: steel,
+      subject: "[Queue] SQL backup job failing nightly",
+      description: "Agent job SQL-BAK-01 fails with disk space error on D:.",
+      statusId: inProgress.id,
+      priorityCode: "high",
+      typeCode: "incident",
+      assigneeId: senior?.id ?? admin.id,
+      createdAt: hoursAgo(26),
+      responseDueAt: hoursAgo(20),
+      resolutionDueAt: hoursFromNow(6),
+    },
+    {
+      org: northwind,
+      subject: "[Queue] Guest Wi-Fi terms page refresh",
+      description: "Marketing wants updated splash page copy. No SLA attached.",
+      statusId: openStatus.id,
+      priorityCode: "medium",
+      typeCode: "service_request",
+      assigneeId: agent.id,
+      createdAt: hoursAgo(2),
+    },
+    {
+      org: harbour,
+      subject: "[Queue] Intune compliance — 12 devices overdue",
+      description: "Devices missing BitLocker and Windows updates. Push policy review.",
+      statusId: openStatus.id,
+      priorityCode: "high",
+      typeCode: "service_request",
+      assigneeId: null,
+      createdAt: hoursAgo(16),
+      responseDueAt: hoursAgo(8),
+      resolutionDueAt: hoursFromNow(12),
+    },
+  ];
+
+  let created = 0;
+  for (const row of showcase) {
+    const ticketNumber = await nextTicketNumber(tenant.id);
+    const ticket = await prisma.ticket.create({
+      data: {
+        tenantId: tenant.id,
+        ticketNumber,
+        subject: row.subject,
+        description: row.description,
+        organisationId: row.org.id,
+        contactId: contactOf(row.org),
+        assigneeId: row.assigneeId,
+        teamId: team?.id,
+        statusId: row.statusId,
+        priorityId: priority[row.priorityCode] ?? priorities[0].id,
+        ticketTypeId: type[row.typeCode] ?? ticketTypes[0].id,
+        createdById: agent.id,
+        createdAt: row.createdAt,
+        updatedAt: row.createdAt,
+        responseDueAt: row.responseDueAt,
+        resolutionDueAt: row.resolutionDueAt,
+        source: "agent",
+      },
+    });
+
+    await prisma.ticketActivity.create({
+      data: {
+        ticketId: ticket.id,
+        actorId: agent.id,
+        eventType: "ticket.created",
+        payload: JSON.stringify({ source: "queue_showcase_seed" }),
+        visibility: "internal",
+        createdAt: row.createdAt,
+      },
+    });
+    created += 1;
+  }
+
+  console.log(`Queue showcase seeded: ${created} tickets (subjects start with [Queue]).`);
 }
 
 if (require.main === module) {
