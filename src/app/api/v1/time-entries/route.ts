@@ -45,19 +45,27 @@ export async function POST(request: Request) {
     await requirePermission(session.user.id, "tickets.edit");
     const ticket = await prisma.ticket.findFirst({
       where: { id: body.ticketId, tenantId: session.user.tenantId },
+      include: { status: true },
     });
     if (!ticket) return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
+
+    const notes = typeof body.notes === "string" ? body.notes.trim() : "";
+    if (!notes) {
+      return NextResponse.json({ error: "Notes are required when logging time" }, { status: 400 });
+    }
 
     const entry = await createTimeEntry({
       tenantId: session.user.tenantId,
       ticketId: body.ticketId,
       userId: session.user.id,
       organisationId: ticket.organisationId,
-      durationMinutes: body.durationMinutes,
+      durationMinutes: Number(body.durationMinutes),
       workTypeId: body.workTypeId,
       isBillable: body.isBillable,
-      notes: body.notes,
+      notes,
       contractId: body.contractId,
+      startedAt: body.startedAt ? new Date(body.startedAt) : undefined,
+      endedAt: body.endedAt ? new Date(body.endedAt) : undefined,
     });
 
     return NextResponse.json(entry, { status: 201 });

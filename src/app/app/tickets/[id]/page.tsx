@@ -51,6 +51,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
         priorities,
         routingCategories,
         currentUserName: session.user.name ?? "Agent",
+        currentUserId: session.user.id,
       }}
       relatedTickets={relatedTickets}
     />

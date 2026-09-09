@@ -116,9 +116,35 @@ Set `PORTAL_BASE_URL` in production so email links use your public domain.
 
 | Email | Password | Role |
 |-------|----------|------|
+| superadmin@ourcloud.local | superadmin123 | Super Admin |
 | admin@ourcloud.local | admin123 | Administrator |
+| manager@ourcloud.local | demo123 | Manager |
+| finance@ourcloud.local | demo123 | Finance |
+| lead@ourcloud.local | demo123 | Team Leader |
+| senior@ourcloud.local | demo123 | Senior Agent |
 | agent@ourcloud.local | agent123 | Agent |
-| john.smith@abc-limited.example | customer123 | Customer (legacy portal login) |
+| john.smith@abc-limited.example | customer123 | Customer (portal) |
+
+### MSP demo dataset
+
+After seed, CRM includes walkthrough accounts (password for new staff users: `demo123`):
+
+| Account code | Scenario |
+|--------------|----------|
+| MSP-ONBOARD | New client onboarding (active ramp contract, laptop, M365 tickets) |
+| MSP-ACTIVE | Steady retainer client with 14 months of time + invoices (monthly/yearly reports) |
+| MSP-RENEW | Old expired contract + draft renewal T&M |
+| MSP-OFFBOARD | Offboarding (disable users, reclaim asset, cancelled contract) |
+
+Load or refresh MSP demo data:
+
+```bash
+npm run db:seed:msp
+```
+
+Or full reset: `npm run db:reset` (includes MSP demo).
+
+Use **Reports → Monthly accounts** and pick prior months on Harbour Managed Services for monthly/yearly history.
 
 ## Project structure
 

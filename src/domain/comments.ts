@@ -132,6 +132,18 @@ export async function addInternalNote(
         authorName: author?.name ?? "An agent",
         taggedUserIds: taggedUserIds.filter((id) => id !== authorId),
       });
+
+      // Jira-style: mention/tag on a note also adds them as ticket reviewers
+      const { tagTicketWatchers } = await import("@/domain/ticket-watchers");
+      await tagTicketWatchers({
+        tenantId: ticket.tenantId,
+        ticketId,
+        taggedById: authorId,
+        userIds: taggedUserIds,
+        reason: "escalation",
+        notify: false,
+        recordActivity: false,
+      });
     }
   }
 

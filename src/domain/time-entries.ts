@@ -33,11 +33,19 @@ export async function createTimeEntry(params: {
   durationMinutes: number;
   workTypeId?: string;
   isBillable?: boolean;
-  notes?: string;
+  notes: string;
   startedAt?: Date;
   endedAt?: Date;
   contractId?: string;
 }) {
+  const notes = params.notes?.trim();
+  if (!notes) {
+    throw new Error("Notes are required when logging time");
+  }
+  if (!Number.isFinite(params.durationMinutes) || params.durationMinutes < 1) {
+    throw new Error("Duration must be at least 1 minute");
+  }
+
   let contractId = params.contractId;
   if (!contractId) {
     const active = await getActiveContractForOrganisation(params.tenantId, params.organisationId);
@@ -54,7 +62,7 @@ export async function createTimeEntry(params: {
       durationMinutes: params.durationMinutes,
       workTypeId: params.workTypeId,
       isBillable: params.isBillable ?? true,
-      notes: params.notes,
+      notes,
       startedAt: params.startedAt,
       endedAt: params.endedAt,
       status: "submitted",
@@ -66,7 +74,7 @@ export async function createTimeEntry(params: {
     ticketId: params.ticketId,
     actorId: params.userId,
     eventType: "time_entry.added",
-    payload: { durationMinutes: params.durationMinutes },
+    payload: { durationMinutes: params.durationMinutes, notesPreview: notes.slice(0, 80) },
     visibility: "internal",
   });
 

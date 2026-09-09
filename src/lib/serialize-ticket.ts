@@ -35,5 +35,12 @@ export function serializeTicketForClient(ticket: TicketWithRelations) {
       createdAt: e.createdAt.toISOString(),
       updatedAt: e.updatedAt.toISOString(),
     })),
+    watchers: (ticket.watchers ?? []).map((w) => ({
+      id: w.id,
+      reason: w.reason,
+      createdAt: w.createdAt.toISOString(),
+      user: w.user,
+      taggedBy: w.taggedBy,
+    })),
   };
 }

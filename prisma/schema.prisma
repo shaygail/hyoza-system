@@ -78,6 +78,8 @@ model User {
   notifications       Notification[]
   preferences         UserPreference?
   kbArticles          KbArticle[]
+  ticketWatchers      TicketWatcher[] @relation("TicketWatcherUser")
+  taggedWatchers      TicketWatcher[] @relation("TicketWatcherTagger")
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -871,6 +873,7 @@ model Ticket {
   customFieldValues TicketCustomFieldValue[]
   inboundEmails    InboundEmail[]
   guestAccess      TicketGuestAccess[]
+  watchers         TicketWatcher[]
 
   @@unique([tenantId, ticketNumber])
   @@index([tenantId, statusId])
@@ -920,6 +923,22 @@ model TicketInternalNoteTag {
   user User               @relation(fields: [userId], references: [id])
 
   @@unique([noteId, userId])
+  @@index([userId])
+}
+
+model TicketWatcher {
+  id        String   @id @default(cuid())
+  ticketId  String
+  userId    String
+  taggedById String
+  reason    String   @default("escalation")
+  createdAt DateTime @default(now())
+
+  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  user     User   @relation("TicketWatcherUser", fields: [userId], references: [id])
+  taggedBy User   @relation("TicketWatcherTagger", fields: [taggedById], references: [id])
+
+  @@unique([ticketId, userId])
   @@index([userId])
 }
 

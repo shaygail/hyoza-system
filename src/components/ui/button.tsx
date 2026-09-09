@@ -3,8 +3,8 @@ import { cn } from "@/lib/utils";
 const variants = {
   default: "bg-ourcloud-600 text-white hover:bg-ourcloud-700",
   secondary: "bg-white text-slate-700 border border-slate-200 hover:bg-slate-50",
-  reply: "bg-blue-600 text-white hover:bg-blue-700",
-  internal: "bg-amber-500 text-white hover:bg-amber-600",
+  reply: "bg-[#2563eb] text-white hover:bg-blue-700",
+  internal: "bg-[#d97706] text-white hover:bg-amber-600",
   ghost: "text-slate-600 hover:bg-slate-100",
   danger: "bg-red-600 text-white hover:bg-red-700",
 };

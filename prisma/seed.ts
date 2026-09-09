@@ -108,6 +108,8 @@ async function main() {
     await seedCrmAccessControl();
     const { seedPsa } = await import("./seed-psa");
     await seedPsa();
+    const { seedMspDemo } = await import("./seed-msp-demo");
+    await seedMspDemo();
     return;
   }
 
@@ -378,6 +380,8 @@ async function main() {
   await seedCrmAccessControl();
   const { seedPsa } = await import("./seed-psa");
   await seedPsa();
+  const { seedMspDemo } = await import("./seed-msp-demo");
+  await seedMspDemo();
 }
 
 main()

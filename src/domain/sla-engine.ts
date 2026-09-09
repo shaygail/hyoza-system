@@ -1,5 +1,4 @@
 import { prisma } from "@/lib/prisma";
-import { createNotification } from "@/domain/notifications";
 
 export interface BusinessCalendarConfig {
   timezone: string;
@@ -220,14 +219,9 @@ export async function checkSlaEscalations(tenantId: string) {
     });
 
     for (const ticket of tickets) {
-      if (policy.escalationAction === "notify" && ticket.assigneeId) {
-        await createNotification({
-          userId: ticket.assigneeId,
-          eventType: "sla.escalation",
-          title: `SLA escalation: ${ticket.ticketNumber}`,
-          body: `Response SLA breached for "${ticket.subject}"`,
-          linkUrl: `/app/tickets/${ticket.id}`,
-        });
+      if (policy.escalationAction === "notify") {
+        const { notifyWatchersOfSlaEscalation } = await import("@/domain/ticket-watchers");
+        await notifyWatchersOfSlaEscalation(ticket);
       }
       escalated.push(ticket.id);
     }

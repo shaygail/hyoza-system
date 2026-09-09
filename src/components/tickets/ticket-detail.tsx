@@ -4,12 +4,15 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Textarea, Select } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
+import { SoftBadge } from "@/components/ui/badge";
 import { SearchSelect } from "@/components/ui/search-select";
+import { MentionTextarea } from "@/components/ui/mention-textarea";
+import { TicketWorkTimer } from "@/components/tickets/ticket-work-timer";
 import { formatDate } from "@/lib/utils";
 import { getActivityLabel } from "@/lib/activity-labels";
+import { mentionHandle, resolveMentionedUserIds, stripMentionFromBody } from "@/lib/mentions";
 import Link from "next/link";
-import { Paperclip, MessageSquare, Lock, Clock, Columns3, UserPlus, X } from "lucide-react";
+import { Paperclip, MessageSquare, Lock, Clock, UserPlus, X } from "lucide-react";
 
 interface TicketData {
   id: string;
@@ -22,7 +25,7 @@ interface TicketData {
   assignee: { id: string; name: string } | null;
   team: { id: string; name: string } | null;
   category: { id: string; name: string; code: string } | null;
-  status: { id: string; name: string; color: string; code: string };
+  status: { id: string; name: string; color: string; code: string; category?: string };
   priority: { id: string; name: string; color: string };
   ticketType: { name: string };
   resolutionDueAt?: string | null;
@@ -38,6 +41,13 @@ interface TicketData {
   }[];
   attachments: { id: string; fileName: string; sizeBytes: number; createdAt: string; uploadedBy: { name: string } }[];
   activities: { id: string; eventType: string; payload: string; visibility: string; createdAt: string; actor: { name: string } | null }[];
+  watchers?: {
+    id: string;
+    reason: string;
+    createdAt: string;
+    user: { id: string; name: string; email: string };
+    taggedBy: { id: string; name: string };
+  }[];
 }
 
 interface Transition {
@@ -53,6 +63,7 @@ interface Metadata {
   routingCategories: { id: string; name: string; code: string }[];
   workTypes?: { id: string; name: string }[];
   currentUserName?: string;
+  currentUserId?: string;
 }
 
 interface RelatedTicket {
@@ -84,18 +95,29 @@ export function TicketDetailClient({
   const [replyError, setReplyError] = useState("");
   const [noteBody, setNoteBody] = useState("");
   const [taggedAgentIds, setTaggedAgentIds] = useState<string[]>([]);
-  const [tagSearch, setTagSearch] = useState("");
-  const [composeMode, setComposeMode] = useState<"reply" | "note" | null>(null);
+  const [watchers, setWatchers] = useState(initialTicket.watchers ?? []);
+  const [watcherIds, setWatcherIds] = useState<string[]>([]);
+  const [watcherComment, setWatcherComment] = useState("");
+  const [watcherSaving, setWatcherSaving] = useState(false);
+  const [watcherError, setWatcherError] = useState("");
+  const [composeMode, setComposeMode] = useState<"reply" | "note" | "escalate" | "time" | null>(null);
   const [timelineFilter, setTimelineFilter] = useState<TimelineFilter>("all");
   const [resolveModal, setResolveModal] = useState<Transition | null>(null);
   const [resolutionSummary, setResolutionSummary] = useState("");
+  const [timeMinutes, setTimeMinutes] = useState(15);
+  const [timeNotes, setTimeNotes] = useState("");
+  const [timeError, setTimeError] = useState("");
   const [loading, setLoading] = useState(false);
   const [detailsSaving, setDetailsSaving] = useState(false);
   const [detailsError, setDetailsError] = useState("");
 
   async function refreshTicket() {
     const res = await fetch(`/api/v1/tickets/${ticket.id}`);
-    if (res.ok) setTicket(await res.json());
+    if (res.ok) {
+      const data = await res.json();
+      setTicket(data);
+      if (data.watchers) setWatchers(data.watchers);
+    }
     router.refresh();
   }
 
@@ -147,30 +169,82 @@ export function TicketDetailClient({
 
   async function handleInternalNote() {
     if (!noteBody.trim()) return;
+    const fromText = resolveMentionedUserIds(noteBody, metadata.technicians);
+    const taggedUserIds = [...new Set([...taggedAgentIds, ...fromText])];
     setLoading(true);
     await fetch(`/api/v1/tickets/${ticket.id}/internal-notes`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ body: noteBody, taggedUserIds: taggedAgentIds }),
+      body: JSON.stringify({ body: noteBody, taggedUserIds }),
     });
     setNoteBody("");
     setTaggedAgentIds([]);
-    setTagSearch("");
     setComposeMode(null);
     setLoading(false);
     await refreshTicket();
   }
 
-  function toggleTaggedAgent(agentId: string) {
-    setTaggedAgentIds((current) =>
-      current.includes(agentId) ? current.filter((id) => id !== agentId) : [...current, agentId]
-    );
+  function removeMentionedAgent(agentId: string) {
+    const agent = metadata.technicians.find((t) => t.id === agentId);
+    setTaggedAgentIds((current) => current.filter((id) => id !== agentId));
+    if (agent) setNoteBody((body) => stripMentionFromBody(body, agent));
   }
 
-  const tagCandidates = metadata.technicians.filter((technician) => {
-    const haystack = `${technician.name} ${technician.email}`.toLowerCase();
-    return haystack.includes(tagSearch.toLowerCase());
-  });
+  function removeWatcherMention(agentId: string) {
+    const agent = metadata.technicians.find((t) => t.id === agentId);
+    setWatcherIds((current) => current.filter((id) => id !== agentId));
+    if (agent) setWatcherComment((body) => stripMentionFromBody(body, agent));
+  }
+
+  async function handleTagWatchers() {
+    const fromText = resolveMentionedUserIds(watcherComment, metadata.technicians);
+    const taggedUserIds = [...new Set([...watcherIds, ...fromText])];
+    if (taggedUserIds.length === 0 || !watcherComment.trim()) {
+      setWatcherError("Add a comment and @mention at least one person.");
+      return;
+    }
+    setWatcherSaving(true);
+    setWatcherError("");
+    try {
+      const res = await fetch(`/api/v1/tickets/${ticket.id}/internal-notes`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ body: watcherComment.trim(), taggedUserIds }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setWatcherError(data.error ?? "Failed to tag for review");
+        return;
+      }
+      setWatcherComment("");
+      setWatcherIds([]);
+      await refreshTicket();
+    } finally {
+      setWatcherSaving(false);
+    }
+  }
+
+  async function handleRemoveWatcher(userId: string) {
+    setWatcherSaving(true);
+    try {
+      const res = await fetch(`/api/v1/tickets/${ticket.id}/watchers`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "remove", userId }),
+      });
+      if (res.ok) {
+        setWatchers(await res.json());
+        await refreshTicket();
+      }
+    } finally {
+      setWatcherSaving(false);
+    }
+  }
+
+  const slaAtRisk =
+    ticket.resolutionDueAt &&
+    new Date(ticket.resolutionDueAt).getTime() - Date.now() < 24 * 60 * 60 * 1000 &&
+    !["resolved", "closed", "cancelled"].includes(ticket.status.code);
 
   async function handleTransition(transition: Transition) {
     const required: string[] = JSON.parse(transition.requiredFields);
@@ -205,15 +279,39 @@ export function TicketDetailClient({
     await refreshTicket();
   }
 
-  async function handleLogTime(minutes: number) {
+  async function handleLogTime() {
+    if (!timeNotes.trim()) {
+      setTimeError("Notes are required when logging time.");
+      return;
+    }
+    if (!Number.isFinite(timeMinutes) || timeMinutes < 1) {
+      setTimeError("Enter at least 1 minute.");
+      return;
+    }
     setLoading(true);
-    await fetch("/api/v1/time-entries", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ticketId: ticket.id, durationMinutes: minutes }),
-    });
-    setLoading(false);
-    await refreshTicket();
+    setTimeError("");
+    try {
+      const res = await fetch("/api/v1/time-entries", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ticketId: ticket.id,
+          durationMinutes: timeMinutes,
+          notes: timeNotes.trim(),
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setTimeError(data.error ?? "Failed to log time");
+        return;
+      }
+      setTimeNotes("");
+      setTimeMinutes(15);
+      setComposeMode(null);
+      await refreshTicket();
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -248,53 +346,98 @@ export function TicketDetailClient({
 
   return (
     <div className="space-y-4">
-      {/* Breadcrumb */}
-      <nav className="flex items-center gap-2 text-sm text-slate-500">
-        <Link href="/app/tickets" className="hover:text-ourcloud-600">Tickets</Link>
-        <span>/</span>
-        <Link href="/app/board" className="hover:text-ourcloud-600 flex items-center gap-1">
-          <Columns3 className="h-3 w-3" /> Board
+      <nav className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white px-6 py-3.5 text-xs">
+        <Link href="/app/tickets" className="font-medium text-ourcloud-700 hover:underline">
+          Tickets
         </Link>
-        <span>/</span>
-        <span className="font-mono text-ourcloud-600">{ticket.ticketNumber}</span>
+        <span className="text-slate-400">/</span>
+        <Link href="/app/board" className="font-medium text-ourcloud-700 hover:underline">
+          Board
+        </Link>
+        <span className="text-slate-400">/</span>
+        <span className="font-semibold text-slate-900">{ticket.ticketNumber}</span>
       </nav>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        {/* Main content — issue body */}
-        <div className="lg:col-span-2 space-y-4">
-          <div className="rounded-lg border border-slate-200 bg-white">
-            <div className="border-b border-slate-200 px-6 py-4">
-              <div className="flex items-center gap-2 text-sm">
-                <Badge color={ticket.ticketType.name === "Incident" ? "#ef4444" : "#3b82f6"}>{ticket.ticketType.name}</Badge>
-                <span className="font-mono text-ourcloud-600">{ticket.ticketNumber}</span>
-              </div>
-              <h1 className="mt-2 text-2xl font-semibold text-slate-900">{ticket.subject}</h1>
+        <div className="space-y-3.5 lg:col-span-2">
+          <div className="rounded-xl border border-slate-200 bg-white p-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <SoftBadge
+                color={ticket.ticketType.name === "Incident" ? "#ef4444" : "#3b82f6"}
+              >
+                {ticket.ticketType.name}
+              </SoftBadge>
+              <span className="font-mono text-xs font-medium text-ourcloud-700">
+                {ticket.ticketNumber}
+              </span>
             </div>
+            <h1 className="mt-3 text-2xl font-semibold text-slate-900">{ticket.subject}</h1>
 
-            <div className="flex flex-wrap gap-2 border-b border-slate-200 px-6 py-3 bg-slate-50">
-              <Button variant="reply" size="sm" onClick={() => { setComposeMode(composeMode === "reply" ? null : "reply"); setReplyError(""); }}>
-                <MessageSquare className="mr-2 h-4 w-4" />Reply
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button
+                variant="reply"
+                size="sm"
+                onClick={() => {
+                  setComposeMode(composeMode === "reply" ? null : "reply");
+                  setReplyError("");
+                }}
+              >
+                <MessageSquare className="mr-1.5 h-3.5 w-3.5" />
+                Reply
               </Button>
-              <Button variant="internal" size="sm" onClick={() => setComposeMode(composeMode === "note" ? null : "note")}>
-                <Lock className="mr-2 h-4 w-4" />Internal Note
+              <Button
+                variant="internal"
+                size="sm"
+                onClick={() => setComposeMode(composeMode === "note" ? null : "note")}
+              >
+                <Lock className="mr-1.5 h-3.5 w-3.5" />
+                Internal note
               </Button>
-              <label className="inline-flex cursor-pointer items-center rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50">
-                <Paperclip className="mr-2 h-4 w-4" />Attach
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  setComposeMode(composeMode === "escalate" ? null : "escalate");
+                  setWatcherError("");
+                }}
+              >
+                <UserPlus className="mr-1.5 h-3.5 w-3.5" />
+                Escalation review
+                {watchers.length > 0 && (
+                  <span className="ml-1.5 rounded-full bg-slate-200 px-1.5 text-[10px] text-slate-700">
+                    {watchers.length}
+                  </span>
+                )}
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  setComposeMode(composeMode === "time" ? null : "time");
+                  setTimeError("");
+                }}
+              >
+                <Clock className="mr-1.5 h-3.5 w-3.5" />
+                Log time
+              </Button>
+              <label className="inline-flex cursor-pointer items-center rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50">
+                <Paperclip className="mr-1.5 h-3.5 w-3.5" />
+                Attach
                 <input type="file" className="hidden" onChange={handleFileUpload} />
               </label>
-              <Button variant="secondary" size="sm" onClick={() => handleLogTime(15)} disabled={loading}>
-                <Clock className="mr-2 h-4 w-4" />15m
-              </Button>
-              <Button variant="secondary" size="sm" onClick={() => handleLogTime(30)} disabled={loading}>30m</Button>
             </div>
 
-            <div className="px-6 py-4">
-              <h2 className="text-sm font-semibold text-slate-700 mb-2">Description</h2>
-              <p className="text-sm text-slate-700 whitespace-pre-wrap">{ticket.description}</p>
+            <div className="mt-4">
+              <h2 className="text-xs font-semibold text-slate-500">Description</h2>
+              <p className="mt-1.5 whitespace-pre-wrap text-[13px] text-slate-900">
+                {ticket.description}
+              </p>
               {ticket.resolutionSummary && (
                 <>
-                  <h2 className="text-sm font-semibold text-slate-700 mt-4 mb-2">Resolution</h2>
-                  <p className="text-sm text-slate-700 whitespace-pre-wrap">{ticket.resolutionSummary}</p>
+                  <h2 className="mt-4 text-xs font-semibold text-slate-500">Resolution</h2>
+                  <p className="mt-1.5 whitespace-pre-wrap text-[13px] text-slate-900">
+                    {ticket.resolutionSummary}
+                  </p>
                 </>
               )}
             </div>
@@ -349,81 +492,209 @@ export function TicketDetailClient({
           {composeMode === "note" && (
             <div className="rounded-lg border-2 border-amber-200 bg-amber-50 p-4">
               <p className="mb-2 text-xs font-medium text-amber-700">Internal Note</p>
-              <Textarea value={noteBody} onChange={(e) => setNoteBody(e.target.value)} placeholder="Type internal note..." />
-              <div className="mt-3">
-                <p className="mb-2 flex items-center gap-1 text-xs font-medium text-amber-700">
-                  <UserPlus className="h-3 w-3" />
-                  Tag agents (they will be emailed)
-                </p>
-                {taggedAgentIds.length > 0 && (
-                  <div className="mb-2 flex flex-wrap gap-1.5">
-                    {taggedAgentIds.map((agentId) => {
-                      const agent = metadata.technicians.find((t) => t.id === agentId);
-                      if (!agent) return null;
-                      return (
-                        <span
-                          key={agentId}
-                          className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800"
-                        >
-                          {agent.email}
-                          <button
-                            type="button"
-                            onClick={() => toggleTaggedAgent(agentId)}
-                            className="rounded-full hover:bg-amber-200"
-                            aria-label={`Remove ${agent.name}`}
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        </span>
-                      );
-                    })}
-                  </div>
-                )}
-                <input
-                  type="text"
-                  value={tagSearch}
-                  onChange={(e) => setTagSearch(e.target.value)}
-                  placeholder="Search agents by name or email..."
-                  className="mb-2 w-full rounded-lg border border-amber-200 bg-white px-3 py-1.5 text-sm"
-                />
-                <div className="max-h-32 overflow-auto rounded-lg border border-amber-200 bg-white">
-                  {tagCandidates.length === 0 ? (
-                    <p className="px-3 py-2 text-xs text-slate-400">No agents found</p>
-                  ) : (
-                    tagCandidates.map((technician) => (
-                      <label
-                        key={technician.id}
-                        className="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm hover:bg-amber-50"
+              <MentionTextarea
+                value={noteBody}
+                onChange={setNoteBody}
+                users={metadata.technicians}
+                mentionedIds={taggedAgentIds}
+                onMentionedIdsChange={setTaggedAgentIds}
+                placeholder="Type note… use @ to mention staff"
+                className="border-amber-200"
+              />
+              {taggedAgentIds.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {taggedAgentIds.map((agentId) => {
+                    const agent = metadata.technicians.find((t) => t.id === agentId);
+                    if (!agent) return null;
+                    return (
+                      <span
+                        key={agentId}
+                        className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800"
                       >
-                        <input
-                          type="checkbox"
-                          checked={taggedAgentIds.includes(technician.id)}
-                          onChange={() => toggleTaggedAgent(technician.id)}
-                        />
-                        <span className="font-medium text-slate-900">{technician.name}</span>
-                        <span className="text-xs text-slate-400">{technician.email}</span>
-                      </label>
-                    ))
-                  )}
+                        @{mentionHandle(agent, metadata.technicians)}
+                        <button
+                          type="button"
+                          onClick={() => removeMentionedAgent(agentId)}
+                          className="rounded-full hover:bg-amber-200"
+                          aria-label={`Remove ${agent.name}`}
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </span>
+                    );
+                  })}
                 </div>
-              </div>
+              )}
               <div className="mt-2 flex gap-2">
                 <Button variant="internal" size="sm" onClick={handleInternalNote} disabled={loading}>Add Note</Button>
-                <Button variant="ghost" size="sm" onClick={() => { setComposeMode(null); setTaggedAgentIds([]); setTagSearch(""); }}>Cancel</Button>
+                <Button variant="ghost" size="sm" onClick={() => { setComposeMode(null); setTaggedAgentIds([]); setNoteBody(""); }}>Cancel</Button>
               </div>
             </div>
           )}
 
-          <div className="rounded-lg border border-slate-200 bg-white">
-            <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
-              <h2 className="font-medium text-slate-900">Activity</h2>
+          {composeMode === "escalate" && (
+            <div className="rounded-lg border-2 border-slate-300 bg-slate-50 p-4">
+              <p className="mb-1 text-xs font-medium text-slate-700">Escalation review</p>
+              <p className="mb-3 text-xs text-slate-500">
+                Write a comment and @mention staff to check this ticket
+                {slaAtRisk ? " (SLA due soon)." : "."} They get the note by email and stay listed as reviewers.
+              </p>
+              {watchers.length > 0 && (
+                <ul className="mb-3 space-y-1.5">
+                  {watchers.map((w) => (
+                    <li
+                      key={w.id}
+                      className="flex items-center justify-between gap-2 rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate font-medium text-slate-900">{w.user.name}</p>
+                        <p className="truncate text-xs text-slate-500">{w.user.email}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveWatcher(w.user.id)}
+                        disabled={watcherSaving}
+                        className="shrink-0 rounded p-1 text-slate-400 hover:bg-slate-200 hover:text-slate-700"
+                        title="Remove"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <MentionTextarea
+                value={watcherComment}
+                onChange={setWatcherComment}
+                users={metadata.technicians}
+                mentionedIds={watcherIds}
+                onMentionedIdsChange={setWatcherIds}
+                placeholder="Why they should check this… type @ to mention"
+                className="mb-2 min-h-[72px] text-sm"
+                minRows={3}
+              />
+              {watcherIds.length > 0 && (
+                <div className="mb-2 flex flex-wrap gap-1.5">
+                  {watcherIds.map((agentId) => {
+                    const agent = metadata.technicians.find((t) => t.id === agentId);
+                    if (!agent) return null;
+                    return (
+                      <span
+                        key={agentId}
+                        className="inline-flex items-center gap-1 rounded-full bg-slate-200 px-2 py-0.5 text-xs text-slate-700"
+                      >
+                        @{mentionHandle(agent, metadata.technicians)}
+                        <button
+                          type="button"
+                          onClick={() => removeWatcherMention(agentId)}
+                          aria-label={`Remove ${agent.name}`}
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
+              {watcherError && <p className="mb-2 text-xs text-red-600">{watcherError}</p>}
+              <div className="mt-2 flex gap-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={async () => {
+                    await handleTagWatchers();
+                  }}
+                  disabled={watcherSaving || !watcherComment.trim()}
+                >
+                  Comment & tag
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setComposeMode(null);
+                    setWatcherComment("");
+                    setWatcherIds([]);
+                    setWatcherError("");
+                  }}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {composeMode === "time" && (
+            <div className="rounded-lg border-2 border-slate-300 bg-slate-50 p-4">
+              <p className="mb-2 text-xs font-medium text-slate-700">Log time</p>
+              <p className="mb-3 text-xs text-slate-500">Notes are required for every time entry.</p>
+              <div className="mb-3 flex flex-wrap items-center gap-2">
+                <label className="text-sm text-slate-600">
+                  Minutes
+                  <input
+                    type="number"
+                    min={1}
+                    value={timeMinutes}
+                    onChange={(e) => setTimeMinutes(Number(e.target.value))}
+                    className="ml-2 w-20 rounded-md border border-slate-200 px-2 py-1.5 text-sm"
+                  />
+                </label>
+                {[15, 30, 60].map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => setTimeMinutes(m)}
+                    className={`rounded-md px-2 py-1 text-xs font-medium ${
+                      timeMinutes === m ? "bg-ourcloud-100 text-ourcloud-700" : "bg-white text-slate-600 border border-slate-200"
+                    }`}
+                  >
+                    {m}m
+                  </button>
+                ))}
+              </div>
+              <Textarea
+                value={timeNotes}
+                onChange={(e) => setTimeNotes(e.target.value)}
+                placeholder="What did you work on?"
+                className="min-h-[80px]"
+              />
+              {timeError && <p className="mt-2 text-xs text-red-600">{timeError}</p>}
+              <div className="mt-2 flex gap-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleLogTime}
+                  disabled={loading || !timeNotes.trim()}
+                >
+                  Save time
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setComposeMode(null);
+                    setTimeNotes("");
+                    setTimeError("");
+                  }}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
+
+          <div className="rounded-xl border border-slate-200 bg-white p-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 className="text-sm font-semibold text-slate-900">Activity</h2>
               <div className="flex gap-1">
                 {(["all", "customer", "internal", "system"] as TimelineFilter[]).map((f) => (
                   <button
                     key={f}
                     onClick={() => setTimelineFilter(f)}
-                    className={`rounded px-2 py-1 text-xs font-medium capitalize ${
-                      timelineFilter === f ? "bg-ourcloud-100 text-ourcloud-700" : "text-slate-500 hover:bg-slate-50"
+                    className={`rounded-md px-2.5 py-1.5 text-[11px] capitalize transition-colors ${
+                      timelineFilter === f
+                        ? "bg-ourcloud-50 font-semibold text-ourcloud-700"
+                        : "font-medium text-slate-500 hover:bg-slate-50"
                     }`}
                   >
                     {f}
@@ -431,40 +702,54 @@ export function TicketDetailClient({
                 ))}
               </div>
             </div>
-            <div className="divide-y divide-slate-100 p-4 space-y-4">
-              {filteredTimeline.length === 0 && <p className="text-sm text-slate-500">No activity yet.</p>}
+            <div className="mt-3 space-y-3">
+              {filteredTimeline.length === 0 && (
+                <p className="text-sm text-slate-500">No activity yet.</p>
+              )}
               {filteredTimeline.map((item) => {
                 if (item.type === "comment") {
                   const displayName = item.data.onBehalfOfContact
                     ? item.data.onBehalfOfContact.name
                     : item.data.author.name;
                   return (
-                    <div key={`c-${item.data.id}`} className="rounded-lg border-l-4 border-blue-500 bg-blue-50/50 p-3">
-                      <div className="flex items-center gap-2 text-xs text-blue-700">
-                        <MessageSquare className="h-3 w-3" />
-                        <span className="font-medium">{displayName}</span>
+                    <div
+                      key={`c-${item.data.id}`}
+                      className="rounded-[10px] bg-blue-50 p-3"
+                    >
+                      <div className="flex flex-wrap items-center gap-2 text-[11px]">
+                        <span className="font-semibold text-blue-700">{displayName}</span>
                         {item.data.onBehalfOfContact && (
                           <span className="text-blue-500">(via agent)</span>
                         )}
-                        <span>{formatDate(item.data.createdAt)}</span>
+                        <span className="text-slate-500">{formatDate(item.data.createdAt)}</span>
                       </div>
-                      <p className="mt-2 text-sm text-slate-700 whitespace-pre-wrap">{item.data.body}</p>
+                      <p className="mt-1.5 whitespace-pre-wrap text-[13px] text-slate-900">
+                        {item.data.body}
+                      </p>
                     </div>
                   );
                 }
                 if (item.type === "note") {
                   return (
-                    <div key={`n-${item.data.id}`} className="rounded-lg border-l-4 border-amber-500 bg-amber-50/50 p-3">
-                      <div className="flex items-center gap-2 text-xs text-amber-700">
-                        <Lock className="h-3 w-3" />
-                        <span className="font-medium">{item.data.author.name}</span>
-                        <span>{formatDate(item.data.createdAt)}</span>
+                    <div
+                      key={`n-${item.data.id}`}
+                      className="rounded-[10px] bg-amber-50 p-3"
+                    >
+                      <div className="flex flex-wrap items-center gap-2 text-[11px]">
+                        <span className="font-semibold text-amber-700">
+                          {item.data.author.name} · internal
+                        </span>
+                        <span className="text-slate-500">{formatDate(item.data.createdAt)}</span>
                       </div>
-                      <p className="mt-2 text-sm text-slate-700 whitespace-pre-wrap">{item.data.body}</p>
+                      <p className="mt-1.5 whitespace-pre-wrap text-[13px] text-slate-900">
+                        {item.data.body}
+                      </p>
                       {item.data.taggedUsers.length > 0 && (
-                        <p className="mt-2 text-xs text-amber-700">
-                          <span className="font-medium">Tagged:</span>{" "}
-                          {item.data.taggedUsers.map((u) => u.email).join(", ")}
+                        <p className="mt-2 text-[11px] text-amber-800">
+                          <span className="font-medium">Mentioned:</span>{" "}
+                          {item.data.taggedUsers
+                            .map((u) => `@${mentionHandle(u, item.data.taggedUsers)}`)
+                            .join(", ")}
                         </p>
                       )}
                     </div>
@@ -472,7 +757,7 @@ export function TicketDetailClient({
                 }
                 const payload = JSON.parse(item.data.payload || "{}");
                 return (
-                  <div key={`a-${item.data.id}`} className="text-xs text-slate-500">
+                  <div key={`a-${item.data.id}`} className="rounded-[10px] bg-slate-50 px-3 py-2 text-xs text-slate-500">
                     {getActivityLabel(item.data.eventType, payload)}
                     {item.data.actor && ` — ${item.data.actor.name}`}
                     <span className="ml-2">{formatDate(item.data.createdAt)}</span>
@@ -483,25 +768,47 @@ export function TicketDetailClient({
           </div>
         </div>
 
-        {/* Right sidebar — issue details */}
-        <div className="space-y-4">
-          <div className="rounded-lg border border-slate-200 bg-white">
-            <div className="border-b border-slate-200 px-4 py-3">
-              <h2 className="text-sm font-semibold text-slate-700">Details</h2>
-            </div>
-            <dl className="divide-y divide-slate-100 text-sm">
-              <DetailRow label="Status">
-                <Badge color={ticket.status.color}>{ticket.status.name}</Badge>
+        <div className="space-y-3.5">
+          <div className="rounded-xl border border-slate-200 bg-white p-4">
+            <h2 className="text-[13px] font-semibold text-slate-900">Details</h2>
+            <dl className="mt-1 divide-y divide-slate-100 text-sm">
+              <DetailRow label="Status" stacked>
+                <Select
+                  value=""
+                  onChange={(e) => {
+                    const transition = transitions.find((t) => t.id === e.target.value);
+                    if (transition) void handleTransition(transition);
+                  }}
+                  disabled={loading || transitions.length === 0}
+                  className="rounded-lg text-xs"
+                >
+                  <option value="">
+                    {ticket.status.name}
+                    {transitions.length === 0 ? "" : " — change…"}
+                  </option>
+                  {transitions.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
+                      {t.toStatus?.name ? ` → ${t.toStatus.name}` : ""}
+                    </option>
+                  ))}
+                </Select>
               </DetailRow>
               <DetailRow label="Priority">
-                <Badge color={ticket.priority.color}>{ticket.priority.name}</Badge>
+                <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-900">
+                  <span
+                    className="inline-block h-2 w-2 rounded-full"
+                    style={{ backgroundColor: ticket.priority.color }}
+                  />
+                  {ticket.priority.name}
+                </span>
               </DetailRow>
               <DetailRow label="Category" stacked>
                 <Select
                   value={ticket.category?.id ?? ""}
                   onChange={(e) => updateTicketDetails({ categoryId: e.target.value || null })}
                   disabled={detailsSaving}
-                  className="text-sm"
+                  className="rounded-lg text-xs"
                 >
                   <option value="">Select category...</option>
                   {metadata.routingCategories.map((category) => (
@@ -533,27 +840,41 @@ export function TicketDetailClient({
               </DetailRow>
               <DetailRow label="Type">{ticket.ticketType.name}</DetailRow>
               {ticket.resolutionDueAt && (
-                <DetailRow label="SLA Due">{formatDate(ticket.resolutionDueAt)}</DetailRow>
+                <DetailRow label="SLA due">
+                  <span className="text-amber-500">{formatDate(ticket.resolutionDueAt)}</span>
+                </DetailRow>
               )}
               {ticket.asset && <DetailRow label="Asset">{ticket.asset.assetTag}</DetailRow>}
             </dl>
             {detailsError && (
-              <p className="px-4 pb-3 text-xs text-red-600">{detailsError}</p>
+              <p className="mt-2 text-xs text-red-600">{detailsError}</p>
             )}
           </div>
 
+          {metadata.currentUserId && (
+            <TicketWorkTimer
+              ticketId={ticket.id}
+              userId={metadata.currentUserId}
+              status={ticket.status}
+              onLogged={refreshTicket}
+            />
+          )}
+
           {relatedTickets.length > 0 && ticket.contact && (
-            <div className="rounded-lg border border-slate-200 bg-white p-4">
-              <h2 className="text-sm font-semibold text-slate-700 mb-2">
+            <div className="rounded-xl border border-slate-200 bg-white p-4">
+              <h2 className="mb-2 text-[13px] font-semibold text-slate-900">
                 Other tickets from {ticket.contact.name}
               </h2>
               <ul className="divide-y divide-slate-100">
                 {relatedTickets.map((t) => (
                   <li key={t.id}>
-                    <Link href={`/app/tickets/${t.id}`} className="block py-2 hover:bg-slate-50 -mx-2 px-2 rounded">
+                    <Link
+                      href={`/app/tickets/${t.id}`}
+                      className="-mx-2 block rounded px-2 py-2 hover:bg-slate-50"
+                    >
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="font-mono text-xs text-slate-400">{t.ticketNumber}</span>
-                        <Badge color={t.status.color}>{t.status.name}</Badge>
+                        <SoftBadge color={t.status.color}>{t.status.name}</SoftBadge>
                       </div>
                       <p className="mt-0.5 text-sm font-medium text-slate-900">{t.subject}</p>
                       <p className="text-xs text-slate-400">{formatDate(t.updatedAt)}</p>
@@ -564,36 +885,35 @@ export function TicketDetailClient({
             </div>
           )}
 
-          {transitions.length > 0 && (
-            <div className="rounded-lg border border-slate-200 bg-white p-4">
-              <h2 className="text-sm font-semibold text-slate-700 mb-3">Workflow</h2>
-              <div className="flex flex-col gap-2">
-                {transitions.map((t) => (
-                  <Button key={t.id} variant="secondary" size="sm" className="justify-start" onClick={() => handleTransition(t)} disabled={loading}>
-                    {t.name}
-                  </Button>
-                ))}
-              </div>
-            </div>
-          )}
-
           {ticket.timeEntries && ticket.timeEntries.length > 0 && (
-            <div className="rounded-lg border border-slate-200 bg-white p-4">
-              <h2 className="text-sm font-semibold text-slate-700 mb-2">Time</h2>
-              <p className="text-2xl font-semibold text-ourcloud-700">
+            <div className="rounded-xl border border-slate-200 bg-white p-4">
+              <h2 className="text-[13px] font-semibold text-slate-900">Time</h2>
+              <p className="mt-2 text-[28px] font-semibold leading-none text-ourcloud-700">
                 {ticket.timeEntries.reduce((s, e) => s + e.durationMinutes, 0)}m
               </p>
-              <p className="text-xs text-slate-500">logged on this ticket</p>
+              <ul className="mt-3 max-h-40 space-y-2 overflow-y-auto text-xs text-slate-600">
+                {ticket.timeEntries.slice(0, 8).map((e) => (
+                  <li key={e.id} className="border-t border-slate-100 pt-2">
+                    <span className="font-medium text-slate-800">{e.durationMinutes}m</span>
+                    {" · "}
+                    {e.user.name}
+                    {e.notes && <p className="mt-0.5 line-clamp-2 text-slate-500">{e.notes}</p>}
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
 
           {ticket.attachments.length > 0 && (
-            <div className="rounded-lg border border-slate-200 bg-white p-4">
-              <h2 className="text-sm font-semibold text-slate-700 mb-2">Attachments</h2>
+            <div className="rounded-xl border border-slate-200 bg-white p-4">
+              <h2 className="mb-2 text-[13px] font-semibold text-slate-900">Attachments</h2>
               <ul className="space-y-1 text-sm">
                 {ticket.attachments.map((a) => (
                   <li key={a.id}>
-                    <a href={`/api/v1/tickets/${ticket.id}/attachments/${a.id}`} className="text-ourcloud-600 hover:underline">
+                    <a
+                      href={`/api/v1/tickets/${ticket.id}/attachments/${a.id}`}
+                      className="text-ourcloud-600 hover:underline"
+                    >
                       {a.fileName}
                     </a>
                   </li>
@@ -616,8 +936,12 @@ export function TicketDetailClient({
               placeholder="Describe how the issue was resolved..."
             />
             <div className="mt-4 flex gap-2">
-              <Button onClick={handleResolve} disabled={loading || !resolutionSummary.trim()}>Resolve</Button>
-              <Button variant="secondary" onClick={() => setResolveModal(null)}>Cancel</Button>
+              <Button onClick={handleResolve} disabled={loading || !resolutionSummary.trim()}>
+                Resolve
+              </Button>
+              <Button variant="secondary" onClick={() => setResolveModal(null)}>
+                Cancel
+              </Button>
             </div>
           </div>
         </div>
@@ -637,17 +961,17 @@ function DetailRow({
 }) {
   if (stacked) {
     return (
-      <div className="space-y-1.5 px-4 py-3">
-        <dt className="text-slate-500">{label}</dt>
-        <dd className="text-slate-900">{children}</dd>
+      <div className="space-y-1.5 py-2">
+        <dt className="text-[11px] font-medium text-slate-500">{label}</dt>
+        <dd className="text-xs font-medium text-slate-900">{children}</dd>
       </div>
     );
   }
 
   return (
-    <div className="flex justify-between gap-4 px-4 py-3">
-      <dt className="text-slate-500 shrink-0">{label}</dt>
-      <dd className="font-medium text-slate-900 text-right">{children}</dd>
+    <div className="flex justify-between gap-4 py-2">
+      <dt className="shrink-0 text-[11px] font-medium text-slate-500">{label}</dt>
+      <dd className="text-right text-xs font-medium text-slate-900">{children}</dd>
     </div>
   );
 }

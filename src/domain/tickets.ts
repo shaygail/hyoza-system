@@ -59,6 +59,7 @@ export async function listTickets(
       status: true,
       priority: true,
       ticketType: true,
+      category: true,
     },
     orderBy: { updatedAt: "desc" },
   });
@@ -111,6 +112,13 @@ export async function getTicket(tenantId: string, id: string) {
       attachments: { include: { uploadedBy: true }, orderBy: { createdAt: "asc" } },
       activities: { include: { actor: true }, orderBy: { createdAt: "asc" } },
       timeEntries: { include: { user: true, workType: true }, orderBy: { createdAt: "desc" } },
+      watchers: {
+        include: {
+          user: { select: { id: true, name: true, email: true } },
+          taggedBy: { select: { id: true, name: true } },
+        },
+        orderBy: { createdAt: "asc" },
+      },
     },
   });
 }

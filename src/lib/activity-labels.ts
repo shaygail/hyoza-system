@@ -22,6 +22,15 @@ export function getActivityLabel(eventType: string, payload: Record<string, unkn
       return "Customer replied";
     case "internal_note.added":
       return "Internal note added";
+    case "ticket.watchers_tagged": {
+      const users = Array.isArray(payload.users) ? payload.users.join(", ") : "";
+      const reason = payload.reason === "escalation" ? " for escalation review" : "";
+      return users ? `Tagged for review${reason}: ${users}` : `Tagged staff for review${reason}`;
+    }
+    case "ticket.watcher_removed":
+      return "Removed tagged reviewer";
+    case "time_entry.added":
+      return `Logged ${payload.durationMinutes ?? "?"} minutes`;
     case "attachment.uploaded":
       return `Attachment uploaded: ${payload.fileName}`;
     case "ticket.resolved":
