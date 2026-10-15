@@ -767,12 +767,15 @@ model InboundEmail {
   mailboxId   String
   messageId   String
   fromAddress String
+  fromName    String?
   subject     String
   body        String
   receivedAt  DateTime  @default(now())
   processedAt DateTime?
   ticketId    String?
+  /// pending | processed | failed | ignored (auto-replies, mail loops)
   status      String    @default("pending")
+  error       String?
 
   mailbox EmailMailbox @relation(fields: [mailboxId], references: [id], onDelete: Cascade)
   ticket  Ticket?      @relation(fields: [ticketId], references: [id])
@@ -787,6 +790,9 @@ model TicketGuestAccess {
   email     String
   token     String   @unique
   createdAt DateTime @default(now())
+  expiresAt DateTime?
+  revokedAt DateTime?
+  lastUsedAt DateTime?
 
   ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
 
@@ -839,6 +845,7 @@ model Ticket {
   responseDueAt     DateTime?
   resolutionDueAt   DateTime?
   firstResponseAt   DateTime?
+  slaEscalatedAt    DateTime?
   resolvedAt        DateTime?
   closedAt          DateTime?
   resolutionSummary String?

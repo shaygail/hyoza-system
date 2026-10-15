@@ -1,111 +1,13 @@
 import { prisma } from "@/lib/prisma";
+import {
+  addBusinessMinutes,
+  businessMinutesBetween,
+  parseCalendar,
+  type BusinessCalendarConfig,
+} from "@/domain/business-time";
 
-export interface BusinessCalendarConfig {
-  timezone: string;
-  workDays: number[];
-  startTime: string;
-  endTime: string;
-  holidays: string[];
-}
-
-export function parseCalendar(raw: {
-  timezone: string;
-  workDays: string;
-  startTime: string;
-  endTime: string;
-  holidays: string;
-}): BusinessCalendarConfig {
-  return {
-    timezone: raw.timezone,
-    workDays: JSON.parse(raw.workDays) as number[],
-    startTime: raw.startTime,
-    endTime: raw.endTime,
-    holidays: JSON.parse(raw.holidays) as string[],
-  };
-}
-
-function parseTime(time: string): { hours: number; minutes: number } {
-  const [h, m] = time.split(":").map(Number);
-  return { hours: h, minutes: m };
-}
-
-function isHoliday(date: Date, holidays: string[]): boolean {
-  const key = date.toISOString().slice(0, 10);
-  return holidays.includes(key);
-}
-
-function isWorkDay(date: Date, workDays: number[]): boolean {
-  return workDays.includes(date.getDay());
-}
-
-function isWithinBusinessHours(date: Date, calendar: BusinessCalendarConfig): boolean {
-  if (!isWorkDay(date, calendar.workDays)) return false;
-  if (isHoliday(date, calendar.holidays)) return false;
-  const { hours, minutes } = parseTime(calendar.startTime);
-  const { hours: endH, minutes: endM } = parseTime(calendar.endTime);
-  const mins = date.getHours() * 60 + date.getMinutes();
-  const startMins = hours * 60 + minutes;
-  const endMins = endH * 60 + endM;
-  return mins >= startMins && mins < endMins;
-}
-
-function nextBusinessStart(date: Date, calendar: BusinessCalendarConfig): Date {
-  const next = new Date(date);
-  for (let i = 0; i < 366; i++) {
-    if (isWorkDay(next, calendar.workDays) && !isHoliday(next, calendar.holidays)) {
-      const { hours, minutes } = parseTime(calendar.startTime);
-      next.setHours(hours, minutes, 0, 0);
-      if (next > date) return next;
-    }
-    next.setDate(next.getDate() + 1);
-    next.setHours(0, 0, 0, 0);
-  }
-  return date;
-}
-
-export function addBusinessMinutes(
-  start: Date,
-  minutes: number,
-  calendar: BusinessCalendarConfig
-): Date {
-  if (minutes <= 0) return new Date(start);
-
-  let remaining = minutes;
-  let current = new Date(start);
-
-  if (!isWithinBusinessHours(current, calendar)) {
-    current = nextBusinessStart(current, calendar);
-  }
-
-  while (remaining > 0) {
-    if (!isWorkDay(current, calendar.workDays) || isHoliday(current, calendar.holidays)) {
-      current = nextBusinessStart(current, calendar);
-      continue;
-    }
-
-    const { hours: endH, minutes: endM } = parseTime(calendar.endTime);
-    const endOfDay = new Date(current);
-    endOfDay.setHours(endH, endM, 0, 0);
-
-    const available = Math.max(0, Math.floor((endOfDay.getTime() - current.getTime()) / 60000));
-    if (available === 0) {
-      current.setDate(current.getDate() + 1);
-      current = nextBusinessStart(current, calendar);
-      continue;
-    }
-
-    const used = Math.min(remaining, available);
-    remaining -= used;
-    current = new Date(current.getTime() + used * 60000);
-
-    if (remaining > 0) {
-      current.setDate(current.getDate() + 1);
-      current = nextBusinessStart(current, calendar);
-    }
-  }
-
-  return current;
-}
+export { addBusinessMinutes, businessMinutesBetween, parseCalendar };
+export type { BusinessCalendarConfig };
 
 export async function getDefaultCalendar(tenantId: string) {
   return prisma.businessCalendar.findFirst({
@@ -156,22 +58,37 @@ export async function resumeSla(ticketId: string) {
   if (!active) return null;
 
   const endedAt = new Date();
-  const pauseMinutes = Math.floor((endedAt.getTime() - active.startedAt.getTime()) / 60000);
 
   await prisma.slaPause.update({
     where: { id: active.id },
     data: { endedAt },
   });
 
-  const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
+  const ticket = await prisma.ticket.findUnique({
+    where: { id: ticketId },
+    include: { slaPolicy: { include: { businessCalendar: true } } },
+  });
   if (!ticket) return null;
 
+  // Shift due dates by the *business* time spent paused, using the same calendar
+  // the due dates were computed with. Without a calendar, fall back to wall-clock.
+  const calendarRow =
+    ticket.slaPolicy?.businessCalendar ?? (await getDefaultCalendar(ticket.tenantId));
+  const calendar = calendarRow ? parseCalendar(calendarRow) : null;
+  const pauseMinutes = calendar
+    ? businessMinutesBetween(active.startedAt, endedAt, calendar)
+    : Math.floor((endedAt.getTime() - active.startedAt.getTime()) / 60000);
+  const shift = (d: Date) =>
+    calendar
+      ? addBusinessMinutes(d, pauseMinutes, calendar)
+      : new Date(d.getTime() + pauseMinutes * 60000);
+
   const updates: { responseDueAt?: Date; resolutionDueAt?: Date; dueAt?: Date } = {};
-  if (ticket.responseDueAt) {
-    updates.responseDueAt = new Date(ticket.responseDueAt.getTime() + pauseMinutes * 60000);
+  if (pauseMinutes > 0 && ticket.responseDueAt && !ticket.firstResponseAt) {
+    updates.responseDueAt = shift(ticket.responseDueAt);
   }
-  if (ticket.resolutionDueAt) {
-    updates.resolutionDueAt = new Date(ticket.resolutionDueAt.getTime() + pauseMinutes * 60000);
+  if (pauseMinutes > 0 && ticket.resolutionDueAt) {
+    updates.resolutionDueAt = shift(ticket.resolutionDueAt);
     updates.dueAt = updates.resolutionDueAt;
   }
 
@@ -212,6 +129,7 @@ export async function checkSlaEscalations(tenantId: string) {
         slaPolicyId: policy.id,
         deletedAt: null,
         firstResponseAt: null,
+        slaEscalatedAt: null,
         createdAt: { lte: threshold },
         status: { category: { in: ["open", "waiting"] } },
       },
@@ -223,6 +141,17 @@ export async function checkSlaEscalations(tenantId: string) {
         const { notifyWatchersOfSlaEscalation } = await import("@/domain/ticket-watchers");
         await notifyWatchersOfSlaEscalation(ticket);
       }
+      // Record the escalation so a continuously running worker doesn't re-notify.
+      await prisma.ticket.update({
+        where: { id: ticket.id },
+        data: { slaEscalatedAt: new Date() },
+      });
+      const { logActivity } = await import("@/domain/activity");
+      await logActivity({
+        ticketId: ticket.id,
+        eventType: "sla.escalated",
+        payload: { policy: policy.name, priority: policy.priority.name },
+      });
       escalated.push(ticket.id);
     }
   }

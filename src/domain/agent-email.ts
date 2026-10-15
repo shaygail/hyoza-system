@@ -1,4 +1,5 @@
 import { getPortalBaseUrl } from "@/domain/customer-email";
+import { escapeHtml as e, sendMail } from "@/lib/mailer";
 
 export interface AgentEmailPayload {
   to: string;
@@ -8,11 +9,7 @@ export interface AgentEmailPayload {
 }
 
 export async function sendAgentEmail(payload: AgentEmailPayload) {
-  const prefix = "[agent:email]";
-  console.log(`${prefix} To: ${payload.to}`);
-  console.log(`${prefix} Subject: ${payload.subject}`);
-  console.log(`${prefix} Body:\n${payload.text}`);
-  return { sent: true, to: payload.to };
+  return sendMail(payload, "[agent:email]");
 }
 
 export async function sendAgentTaggedInNoteEmail(params: {
@@ -40,10 +37,10 @@ export async function sendAgentTaggedInNoteEmail(params: {
   ].join("\n");
 
   const html = `
-    <p>Hi ${params.name},</p>
-    <p><strong>${params.authorName}</strong> tagged you in an internal note on ticket <strong>${params.ticketNumber}</strong> (${params.subject}):</p>
-    <blockquote style="border-left:3px solid #f59e0b;padding-left:12px;color:#444">${preview}</blockquote>
-    <p><a href="${params.ticketUrl}">View ticket</a></p>
+    <p>Hi ${e(params.name)},</p>
+    <p><strong>${e(params.authorName)}</strong> tagged you in an internal note on ticket <strong>${e(params.ticketNumber)}</strong> (${e(params.subject)}):</p>
+    <blockquote style="border-left:3px solid #f59e0b;padding-left:12px;color:#444;white-space:pre-wrap">${e(preview)}</blockquote>
+    <p><a href="${e(params.ticketUrl)}">View ticket</a></p>
   `;
 
   return sendAgentEmail({

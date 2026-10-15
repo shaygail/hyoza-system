@@ -28,7 +28,13 @@ export async function GET(
   const { token } = await params;
   const access = await getGuestAccessByToken(token);
   if (!access || access.ticket.deletedAt) {
-    return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
+    return NextResponse.json(
+      {
+        error:
+          "This ticket link is invalid or has expired. Use the link in your most recent email, or reply to that email.",
+      },
+      { status: 404 }
+    );
   }
 
   const guestContext = await listGuestTicketsForToken(token);

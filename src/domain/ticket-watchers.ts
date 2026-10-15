@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/domain/activity";
 import { createNotification } from "@/domain/notifications";
 import { sendAgentEmail, agentTicketUrl } from "@/domain/agent-email";
+import { escapeHtml as e } from "@/lib/mailer";
 
 async function staffUserIds(userIds: string[]) {
   const staff = await prisma.user.findMany({
@@ -160,10 +161,10 @@ export async function notifyTicketWatchers(params: {
           "",
           `Open ticket: ${ticketUrl}`,
         ].join("\n"),
-        html: `<p>Hi ${user.name},</p>
-          <p><strong>${params.authorName}</strong> ${reasonLabel}.</p>
-          <p><strong>${params.ticketNumber}</strong> — ${params.subject}</p>
-          <p><a href="${ticketUrl}">Open ticket</a></p>`,
+        html: `<p>Hi ${e(user.name)},</p>
+          <p><strong>${e(params.authorName)}</strong> ${e(reasonLabel)}.</p>
+          <p><strong>${e(params.ticketNumber)}</strong> — ${e(params.subject)}</p>
+          <p><a href="${e(ticketUrl)}">Open ticket</a></p>`,
       });
     })
   );
