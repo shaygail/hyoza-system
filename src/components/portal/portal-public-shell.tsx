@@ -24,18 +24,18 @@ export function PortalPublicShell({
       style={{ "--portal-primary": primary } as React.CSSProperties}
     >
       <header className="border-b border-slate-200 bg-white">
-        <div className={`mx-auto flex items-center justify-between px-4 py-4 ${embed ? "max-w-lg" : "max-w-4xl"}`}>
-          <div className="flex items-center gap-3">
+        <div className={`mx-auto flex h-14 items-center justify-between px-4 ${embed ? "max-w-lg" : "max-w-5xl"}`}>
+          <div className="flex items-center gap-2.5">
             {config.branding.logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={config.branding.logoUrl} alt={config.tenantName} className="h-9 w-auto" />
+              <img src={config.branding.logoUrl} alt={config.tenantName} className="h-8 w-auto" />
             ) : (
-              <div
-                className="flex h-9 w-9 items-center justify-center rounded-lg text-white"
+              <span
+                className="flex h-7 w-7 items-center justify-center rounded-[4px] text-white"
                 style={{ backgroundColor: primary }}
               >
-                <Cloud className="h-5 w-5" />
-              </div>
+                <Cloud className="h-4 w-4" strokeWidth={2.5} />
+              </span>
             )}
             <div>
               <div className="text-sm font-semibold text-slate-900">
@@ -47,7 +47,7 @@ export function PortalPublicShell({
         </div>
       </header>
 
-      <main className={`mx-auto p-6 ${embed ? "max-w-lg" : "max-w-4xl"}`}>{children}</main>
+      <main className={`mx-auto px-4 py-8 ${embed ? "max-w-lg" : "max-w-5xl"}`}>{children}</main>
 
       {!embed && (
         <footer className="border-t border-slate-200 bg-white py-6 text-center text-xs text-slate-400">

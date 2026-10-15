@@ -21,24 +21,24 @@ export function PortalLoginForm({ tenantName, portalTitle, logoUrl, primaryColor
   const [state, formAction, pending] = useActionState(portalLoginAction, null);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 px-4">
-      <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-10">
+      <div className="w-full max-w-[400px] rounded-[4px] bg-white px-10 py-8 shadow-overlay">
         <div className="mb-8 flex flex-col items-center text-center">
           {logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={logoUrl} alt={tenantName} className="mb-4 h-12 w-auto" />
           ) : (
             <div
-              className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl text-white"
+              className="mb-4 flex h-10 w-10 items-center justify-center rounded-[4px] text-white"
               style={{ backgroundColor: primaryColor }}
             >
               <Cloud className="h-7 w-7" />
             </div>
           )}
-          <h1 className="text-xl font-semibold text-slate-900">
+          <h1 className="text-lg font-semibold text-slate-900">
             {tenantName} {portalTitle}
           </h1>
-          <p className="mt-1 text-sm text-slate-500">Sign in to view tickets and get help</p>
+          <p className="mt-1 text-sm text-slate-600">Log in to view your requests and get help</p>
         </div>
 
         <form action={formAction} className="space-y-4">
@@ -69,11 +69,11 @@ export function PortalLoginForm({ tenantName, portalTitle, logoUrl, primaryColor
 
           <Button
             type="submit"
-            className="w-full text-white hover:opacity-90"
+            className="h-10 w-full text-white hover:opacity-90"
             style={{ backgroundColor: primaryColor }}
             disabled={pending}
           >
-            {pending ? "Signing in..." : "Sign in"}
+            {pending ? "Logging in…" : "Continue"}
           </Button>
         </form>
 

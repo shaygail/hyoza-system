@@ -1,38 +1,20 @@
 import { cn } from "@/lib/utils";
 
+// Atlassian text field: neutral border, light hover fill, blue focus ring.
+const field =
+  "w-full rounded-[3px] border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 placeholder:text-slate-400 hover:bg-slate-50 focus:border-ourcloud-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-ourcloud-400 disabled:cursor-not-allowed disabled:bg-slate-100";
+
 export function Input({ className, ...props }: React.InputHTMLAttributes<HTMLInputElement>) {
-  return (
-    <input
-      className={cn(
-        "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-ourcloud-500 focus:outline-none focus:ring-2 focus:ring-ourcloud-500/20",
-        className
-      )}
-      {...props}
-    />
-  );
+  return <input className={cn(field, className)} {...props} />;
 }
 
 export function Textarea({ className, ...props }: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  return (
-    <textarea
-      className={cn(
-        "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-ourcloud-500 focus:outline-none focus:ring-2 focus:ring-ourcloud-500/20 min-h-[100px]",
-        className
-      )}
-      {...props}
-    />
-  );
+  return <textarea className={cn(field, "min-h-[100px]", className)} {...props} />;
 }
 
 export function Select({ className, children, ...props }: React.SelectHTMLAttributes<HTMLSelectElement>) {
   return (
-    <select
-      className={cn(
-        "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-ourcloud-500 focus:outline-none focus:ring-2 focus:ring-ourcloud-500/20",
-        className
-      )}
-      {...props}
-    >
+    <select className={cn(field, className)} {...props}>
       {children}
     </select>
   );
@@ -40,7 +22,7 @@ export function Select({ className, children, ...props }: React.SelectHTMLAttrib
 
 export function Label({ className, children, ...props }: React.LabelHTMLAttributes<HTMLLabelElement>) {
   return (
-    <label className={cn("block text-sm font-medium text-slate-700 mb-1", className)} {...props}>
+    <label className={cn("mb-1 block text-xs font-semibold text-slate-500", className)} {...props}>
       {children}
     </label>
   );

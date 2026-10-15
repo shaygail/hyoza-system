@@ -3,6 +3,7 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/ui/page-header";
 import { Download, BarChart3, FileText } from "lucide-react";
 
 interface VolumeReport {
@@ -225,35 +226,26 @@ export function ReportsClient() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Reports</h1>
-          <p className="text-sm text-slate-500">Monthly account summaries, ticket volume, SLA, and time</p>
-        </div>
-        <div className="flex gap-1 rounded-lg border border-slate-200 bg-white p-1">
-          <button
-            type="button"
-            onClick={() => setTab("monthly")}
-            className={`rounded-md px-3 py-1.5 text-sm ${tab === "monthly" ? "bg-ourcloud-50 text-ourcloud-700 font-medium" : "text-slate-500"}`}
-          >
-            Monthly
-          </button>
-          <button
-            type="button"
-            onClick={() => setTab("yearly")}
-            className={`rounded-md px-3 py-1.5 text-sm ${tab === "yearly" ? "bg-ourcloud-50 text-ourcloud-700 font-medium" : "text-slate-500"}`}
-          >
-            Yearly
-          </button>
-          <button
-            type="button"
-            onClick={() => setTab("overview")}
-            className={`rounded-md px-3 py-1.5 text-sm ${tab === "overview" ? "bg-ourcloud-50 text-ourcloud-700 font-medium" : "text-slate-500"}`}
-          >
-            Overview
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        title="Reports"
+        description="Monthly account summaries, ticket volume, SLA and time."
+        actions={
+          <div className="flex rounded-[3px] bg-[#091e420f] p-0.5">
+            {(["monthly", "yearly", "overview"] as const).map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setTab(t)}
+                className={`h-7 rounded-[3px] px-2.5 text-sm font-medium capitalize transition-colors ${
+                  tab === t ? "bg-white text-ourcloud-700 shadow-card" : "text-slate-600 hover:bg-[#091e420f]"
+                }`}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+        }
+      />
 
       {tab === "monthly" && (
         <div className="space-y-4">
@@ -264,7 +256,7 @@ export function ReportsClient() {
                 type="month"
                 value={month}
                 onChange={(e) => setMonth(e.target.value)}
-                className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                className="rounded-[3px] border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 placeholder:text-slate-400 hover:bg-slate-50 focus:border-ourcloud-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-ourcloud-400"
               />
             </div>
             <div>
@@ -272,7 +264,7 @@ export function ReportsClient() {
               <select
                 value={organisationId}
                 onChange={(e) => setOrganisationId(e.target.value)}
-                className="min-w-[200px] rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                className="min-w-[200px] rounded-[3px] border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 placeholder:text-slate-400 hover:bg-slate-50 focus:border-ourcloud-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-ourcloud-400"
               >
                 <option value="">All accounts with activity</option>
                 {orgs.map((o) => (
@@ -314,18 +306,18 @@ export function ReportsClient() {
                 />
               </div>
 
-              <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+              <div className="overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead className="border-b border-slate-200 bg-slate-50">
+                  <thead className="border-b-2 border-slate-200">
                     <tr>
-                      <th className="px-4 py-3 text-left font-medium text-slate-600">Account</th>
-                      <th className="px-4 py-3 text-left font-medium text-slate-600">Tickets</th>
-                      <th className="px-4 py-3 text-left font-medium text-slate-600">Time</th>
-                      <th className="px-4 py-3 text-left font-medium text-slate-600">Contract usage</th>
-                      <th className="px-4 py-3 text-left font-medium text-slate-600">Invoices</th>
+                      <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500">Account</th>
+                      <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500">Tickets</th>
+                      <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500">Time</th>
+                      <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500">Contract usage</th>
+                      <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500">Invoices</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-slate-200">
                     {monthly.accounts.length === 0 ? (
                       <tr>
                         <td colSpan={5} className="px-4 py-8 text-center text-slate-500">
@@ -341,7 +333,7 @@ export function ReportsClient() {
                               setExpandedId(expandedId === a.organisationId ? null : a.organisationId)
                             }
                           >
-                            <td className="px-4 py-3">
+                            <td className="px-3 py-2.5">
                               <Link
                                 href={`/app/customers/${a.organisationId}`}
                                 className="font-medium text-ourcloud-600 hover:underline"
@@ -356,17 +348,17 @@ export function ReportsClient() {
                                 <p className="text-xs text-slate-500">{a.contract.name}</p>
                               )}
                             </td>
-                            <td className="px-4 py-3 text-slate-600">
+                            <td className="px-3 py-2.5 text-slate-600">
                               {a.ticketsCreated} created
                               <br />
                               <span className="text-xs">{a.ticketsResolved} resolved</span>
                             </td>
-                            <td className="px-4 py-3 text-slate-600">
+                            <td className="px-3 py-2.5 text-slate-600">
                               {hours(a.totalMinutes)}h total
                               <br />
                               <span className="text-xs">{hours(a.billableMinutes)}h billable · {hours(a.approvedMinutes)}h approved</span>
                             </td>
-                            <td className="px-4 py-3 text-slate-600">
+                            <td className="px-3 py-2.5 text-slate-600">
                               {a.allowanceMinutes != null ? (
                                 <>
                                   {a.billableMinutes}m / {a.allowanceMinutes}m
@@ -381,7 +373,7 @@ export function ReportsClient() {
                                 <span className="text-slate-400">No allowance</span>
                               )}
                             </td>
-                            <td className="px-4 py-3 text-slate-600">
+                            <td className="px-3 py-2.5 text-slate-600">
                               {a.invoiceCount > 0
                                 ? `${a.currency} ${a.invoiceTotal.toFixed(2)}`
                                 : "—"}
@@ -447,7 +439,7 @@ export function ReportsClient() {
                 max={2100}
                 value={year}
                 onChange={(e) => setYear(e.target.value)}
-                className="w-28 rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                className="w-28 rounded-[3px] border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 placeholder:text-slate-400 hover:bg-slate-50 focus:border-ourcloud-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-ourcloud-400"
               />
             </div>
             <div>
@@ -455,7 +447,7 @@ export function ReportsClient() {
               <select
                 value={organisationId}
                 onChange={(e) => setOrganisationId(e.target.value)}
-                className="min-w-[200px] rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                className="min-w-[200px] rounded-[3px] border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 placeholder:text-slate-400 hover:bg-slate-50 focus:border-ourcloud-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-ourcloud-400"
               >
                 <option value="">All accounts with activity</option>
                 {orgs.map((o) => (
@@ -496,18 +488,18 @@ export function ReportsClient() {
                 />
               </div>
 
-              <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+              <div className="overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead className="border-b border-slate-200 bg-slate-50">
+                  <thead className="border-b-2 border-slate-200">
                     <tr>
-                      <th className="px-4 py-3 text-left font-medium text-slate-600">Account</th>
-                      <th className="px-4 py-3 text-left font-medium text-slate-600">Months active</th>
-                      <th className="px-4 py-3 text-left font-medium text-slate-600">Tickets</th>
-                      <th className="px-4 py-3 text-left font-medium text-slate-600">Billable</th>
-                      <th className="px-4 py-3 text-left font-medium text-slate-600">Invoices</th>
+                      <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500">Account</th>
+                      <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500">Months active</th>
+                      <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500">Tickets</th>
+                      <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500">Billable</th>
+                      <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500">Invoices</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-slate-200">
                     {yearly.accounts.length === 0 ? (
                       <tr>
                         <td colSpan={5} className="px-4 py-8 text-center text-slate-500">
@@ -517,16 +509,16 @@ export function ReportsClient() {
                     ) : (
                       yearly.accounts.map((a) => (
                         <tr key={a.organisationId}>
-                          <td className="px-4 py-3">
+                          <td className="px-3 py-2.5">
                             <Link href={`/app/customers/${a.organisationId}`} className="font-medium text-ourcloud-600 hover:underline">
                               {a.name}
                             </Link>
                             {a.accountCode && <p className="text-xs text-slate-400">{a.accountCode}</p>}
                           </td>
-                          <td className="px-4 py-3">{a.monthsActive}</td>
-                          <td className="px-4 py-3">{a.ticketsCreated} / {a.ticketsResolved}</td>
-                          <td className="px-4 py-3">{hours(a.billableMinutes)}h</td>
-                          <td className="px-4 py-3">
+                          <td className="px-3 py-2.5">{a.monthsActive}</td>
+                          <td className="px-3 py-2.5">{a.ticketsCreated} / {a.ticketsResolved}</td>
+                          <td className="px-3 py-2.5">{hours(a.billableMinutes)}h</td>
+                          <td className="px-3 py-2.5">
                             {a.invoiceCount > 0 ? `${a.currency} ${a.invoiceTotal.toFixed(2)}` : "—"}
                           </td>
                         </tr>

@@ -16,7 +16,7 @@ const DEFAULTS: TenantSettings = {
   welcomeMessage: "Get help from our support team. Sign in to view your tickets or submit a new request.",
   branding: {
     logoUrl: "",
-    primaryColor: "#4f46e5",
+    primaryColor: "#0c66e4",
   },
 };
 

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Avatar } from "@/components/ui/jira";
 import { formatDate } from "@/lib/utils";
 
 interface GuestTicketSummary {
@@ -96,7 +97,7 @@ export function GuestTicketView({ token }: { token: string }) {
           <p className="mt-1 text-xs text-slate-500">
             All requests linked to {ticket.contactName}
           </p>
-          <div className="mt-3 divide-y divide-slate-100">
+          <div className="mt-3 divide-y divide-slate-200">
             {ticket.customerTickets.map((t) => (
               <Link
                 key={t.token}
@@ -106,10 +107,10 @@ export function GuestTicketView({ token }: { token: string }) {
                 }`}
               >
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-mono text-xs text-slate-500">{t.ticketNumber}</span>
+                  <span className="text-xs text-slate-500">{t.ticketNumber}</span>
                   <Badge color={t.status.color}>{t.status.name}</Badge>
                   {t.isCurrent && (
-                    <span className="text-xs font-medium text-emerald-700">Viewing</span>
+                    <span className="text-xs font-medium text-ourcloud-700">Viewing</span>
                   )}
                 </div>
                 <p className="mt-1 text-sm font-medium text-slate-900">{t.subject}</p>
@@ -120,7 +121,7 @@ export function GuestTicketView({ token }: { token: string }) {
           <div className="mt-4 border-t border-slate-100 pt-3">
             <Link
               href="/support/submit"
-              className="text-sm font-medium text-emerald-700 hover:underline"
+              className="text-sm font-medium text-ourcloud-700 hover:underline"
             >
               Submit another request
             </Link>
@@ -130,7 +131,7 @@ export function GuestTicketView({ token }: { token: string }) {
 
       <div className="rounded-xl border border-slate-200 bg-white p-6">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="font-mono text-sm text-slate-500">{ticket.ticketNumber}</span>
+          <span className="text-sm text-slate-500">{ticket.ticketNumber}</span>
           <Badge color={ticket.status.color}>{ticket.status.name}</Badge>
           <Badge color={ticket.priority.color}>{ticket.priority.name}</Badge>
         </div>
@@ -138,28 +139,23 @@ export function GuestTicketView({ token }: { token: string }) {
         <p className="mt-4 whitespace-pre-wrap text-sm text-slate-700">{ticket.description}</p>
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-white p-4">
-        <h2 className="mb-3 font-medium text-slate-900">Conversation</h2>
-        <div className="space-y-3">
+      <div className="rounded-[4px] bg-white p-6 shadow-card">
+        <h2 className="mb-4 text-base font-semibold text-slate-900">Activity</h2>
+        <div className="space-y-5">
           {ticket.comments.length === 0 && (
             <p className="text-sm text-slate-500">No replies yet. Our team will respond soon.</p>
           )}
           {ticket.comments.map((c) => (
-            <div
-              key={c.id}
-              className={`rounded-lg border-l-4 p-3 text-sm ${
-                c.isFromSupport
-                  ? "border-emerald-500 bg-emerald-50"
-                  : "border-blue-400 bg-blue-50"
-              }`}
-            >
-              <div className={`text-xs ${c.isFromSupport ? "text-emerald-700" : "text-blue-600"}`}>
-                {c.authorName}
-                {c.isFromSupport ? " · Support team" : ""}
-                {" · "}
-                {formatDate(c.createdAt)}
+            <div key={c.id} className="flex gap-3 text-sm">
+              <Avatar name={c.authorName} size={32} />
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-semibold text-slate-900">{c.authorName}</span>
+                  {c.isFromSupport && <Badge color="#3b82f6">Support team</Badge>}
+                  <span className="text-slate-500">{formatDate(c.createdAt)}</span>
+                </div>
+                <p className="mt-1 whitespace-pre-wrap leading-6 text-slate-900">{c.body}</p>
               </div>
-              <p className="mt-1 whitespace-pre-wrap text-slate-700">{c.body}</p>
             </div>
           ))}
         </div>

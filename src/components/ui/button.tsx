@@ -1,18 +1,19 @@
 import { cn } from "@/lib/utils";
 
+// Atlassian button appearances: primary, default (neutral fill), subtle, warning, danger.
 const variants = {
-  default: "bg-ourcloud-600 text-white hover:bg-ourcloud-700",
-  secondary: "bg-white text-slate-700 border border-slate-200 hover:bg-slate-50",
-  reply: "bg-[#2563eb] text-white hover:bg-blue-700",
-  internal: "bg-[#d97706] text-white hover:bg-amber-600",
-  ghost: "text-slate-600 hover:bg-slate-100",
-  danger: "bg-red-600 text-white hover:bg-red-700",
+  default: "bg-ourcloud-600 text-white hover:bg-ourcloud-700 active:bg-ourcloud-800",
+  secondary: "bg-[#091e420f] text-slate-600 hover:bg-[#091e4224] active:bg-[#091e424f]",
+  reply: "bg-ourcloud-600 text-white hover:bg-ourcloud-700 active:bg-ourcloud-800",
+  internal: "bg-[#f5cd47] text-slate-900 hover:bg-[#e2b203] active:bg-[#cf9f02]",
+  ghost: "text-slate-600 hover:bg-[#091e420f] active:bg-[#091e4224]",
+  danger: "bg-[#c9372c] text-white hover:bg-[#ae2e24] active:bg-[#5d1f1a]",
 };
 
 const sizes = {
-  sm: "px-3 py-1.5 text-sm",
-  md: "px-4 py-2 text-sm",
-  lg: "px-6 py-3 text-base",
+  sm: "h-7 px-2.5 text-[13px]",
+  md: "h-8 px-3 text-sm",
+  lg: "h-10 px-4 text-sm",
 };
 
 export function Button({
@@ -27,7 +28,7 @@ export function Button({
   return (
     <button
       className={cn(
-        "inline-flex items-center justify-center rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-ourcloud-500 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none",
+        "inline-flex items-center justify-center whitespace-nowrap rounded-[3px] font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ourcloud-400 focus-visible:ring-offset-1 disabled:pointer-events-none disabled:opacity-50",
         variants[variant],
         sizes[size],
         className

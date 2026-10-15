@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { getAsset } from "@/domain/assets";
 import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/ui/page-header";
 
 export default async function AssetDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
@@ -14,31 +15,41 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
 
   return (
     <div className="space-y-6">
-      <div>
-        <Link href="/app/assets" className="text-sm text-ourcloud-600 hover:underline">← Assets</Link>
-        <h1 className="mt-2 text-2xl font-semibold text-slate-900">{asset.assetTag}</h1>
-        <p className="text-slate-500">{asset.name} · {asset.organisation.name}</p>
-      </div>
+      <PageHeader
+        title={asset.assetTag}
+        description={`${asset.name} · ${asset.organisation.name}`}
+        breadcrumbs={[{ label: "Assets", href: "/app/assets" }]}
+      />
 
-      <div className="grid grid-cols-2 gap-4 rounded-xl border border-slate-200 bg-white p-6 text-sm md:grid-cols-4">
-        <div><span className="text-slate-500">Type</span><p className="font-medium capitalize">{asset.assetType}</p></div>
-        <div><span className="text-slate-500">Status</span><p className="font-medium capitalize">{asset.status}</p></div>
-        <div><span className="text-slate-500">Manufacturer</span><p className="font-medium">{asset.manufacturer ?? "—"}</p></div>
-        <div><span className="text-slate-500">Model</span><p className="font-medium">{asset.model ?? "—"}</p></div>
-        <div><span className="text-slate-500">OS</span><p className="font-medium">{asset.operatingSystem ?? "—"}</p></div>
-        <div><span className="text-slate-500">Location</span><p className="font-medium">{asset.location ?? "—"}</p></div>
-        <div><span className="text-slate-500">Serial</span><p className="font-medium">{asset.serialNumber ?? "—"}</p></div>
+      <div className="rounded-[4px] border border-slate-200">
+        <h2 className="border-b border-slate-200 px-4 py-3 text-sm font-semibold text-slate-900">Details</h2>
+        <dl className="grid grid-cols-1 gap-x-8 px-4 py-3 text-sm md:grid-cols-2">
+          {[
+            ["Type", asset.assetType],
+            ["Status", asset.status],
+            ["Manufacturer", asset.manufacturer],
+            ["Model", asset.model],
+            ["OS", asset.operatingSystem],
+            ["Location", asset.location],
+            ["Serial", asset.serialNumber],
+          ].map(([label, value]) => (
+            <div key={label} className="grid grid-cols-[120px_minmax(0,1fr)] gap-3 py-1.5">
+              <dt className="font-semibold text-slate-600">{label}</dt>
+              <dd className={label === "Type" || label === "Status" ? "capitalize" : ""}>{value ?? "—"}</dd>
+            </div>
+          ))}
+        </dl>
       </div>
 
       {asset.tickets.length > 0 && (
-        <div className="rounded-xl border border-slate-200 bg-white">
-          <div className="border-b border-slate-200 px-4 py-3 font-medium">Related Tickets</div>
-          <div className="divide-y divide-slate-100">
+        <div className="rounded-[4px] border border-slate-200">
+          <h2 className="border-b border-slate-200 px-4 py-3 text-sm font-semibold text-slate-900">Related tickets</h2>
+          <div className="py-1">
             {asset.tickets.map((t) => (
-              <Link key={t.id} href={`/app/tickets/${t.id}`} className="block px-4 py-3 hover:bg-slate-50">
-                <span className="font-mono text-xs text-slate-400">{t.ticketNumber}</span>
-                <span className="ml-2"><Badge color={t.status.color}>{t.status.name}</Badge></span>
-                <p className="mt-1 text-sm font-medium">{t.subject}</p>
+              <Link key={t.id} href={`/app/tickets/${t.id}`} className="flex items-center gap-3 px-4 py-2 hover:bg-slate-100">
+                <span className="w-24 shrink-0 text-sm text-ourcloud-700">{t.ticketNumber}</span>
+                <span className="min-w-0 flex-1 truncate text-sm text-slate-900">{t.subject}</span>
+                <Badge color={t.status.color}>{t.status.name}</Badge>
               </Link>
             ))}
           </div>

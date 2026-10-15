@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, PriorityLabel } from "@/components/ui/jira";
 import { formatDate } from "@/lib/utils";
 
 interface PortalTicket {
@@ -57,40 +58,48 @@ export function PortalTicketDetail({ ticket: initial }: { ticket: PortalTicket }
 
   return (
     <div className="space-y-4">
-      <Link href="/portal/tickets" className="text-sm text-ourcloud-600 hover:underline">← My Tickets</Link>
-      <div className="rounded-xl border border-slate-200 bg-white p-6">
-        <div className="flex items-center gap-2">
-          <span className="font-mono text-ourcloud-600">{ticket.ticketNumber}</span>
+      <nav className="flex items-center gap-2 text-sm text-slate-500">
+        <Link href="/portal" className="hover:underline">Help center</Link>
+        <span>/</span>
+        <Link href="/portal/tickets" className="hover:underline">Requests</Link>
+        <span>/</span>
+        <span>{ticket.ticketNumber}</span>
+      </nav>
+      <div className="rounded-[4px] bg-white p-6 shadow-card">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-sm text-slate-600">{ticket.ticketNumber}</span>
           <Badge color={ticket.status.color}>{ticket.status.name}</Badge>
-          <Badge color={ticket.priority.color}>{ticket.priority.name}</Badge>
+          <PriorityLabel name={ticket.priority.name} />
         </div>
-        <h1 className="mt-2 text-xl font-semibold">{ticket.subject}</h1>
-        <p className="mt-4 text-sm text-slate-700 whitespace-pre-wrap">{ticket.description}</p>
+        <h1 className="mt-2 text-2xl font-medium text-slate-900">{ticket.subject}</h1>
+        <p className="mt-4 whitespace-pre-wrap text-sm leading-6 text-slate-900">{ticket.description}</p>
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-white p-4">
-        <h2 className="mb-3 font-medium">Conversation</h2>
-        <div className="space-y-3">
+      <div className="rounded-[4px] bg-white p-6 shadow-card">
+        <h2 className="mb-4 text-base font-semibold text-slate-900">Activity</h2>
+        <div className="space-y-5">
           {ticket.comments.map((c) => {
             const name = c.onBehalfOfContact?.name ?? c.author.name;
             return (
-              <div key={c.id} className="rounded-lg border-l-4 border-blue-400 bg-blue-50 p-3 text-sm">
-                <div className="text-xs text-blue-600">
-                  {name}
-                  {c.onBehalfOfContact && <span className="text-blue-400"> · via support</span>}
-                  {" · "}
-                  {formatDate(c.createdAt)}
+              <div key={c.id} className="flex gap-3 text-sm">
+                <Avatar name={name} size={32} />
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-semibold text-slate-900">{name}</span>
+                    {c.onBehalfOfContact && <span className="text-slate-500">via support</span>}
+                    <span className="text-slate-500">{formatDate(c.createdAt)}</span>
+                  </div>
+                  <p className="mt-1 whitespace-pre-wrap leading-6 text-slate-900">{c.body}</p>
                 </div>
-                <p className="mt-1 whitespace-pre-wrap">{c.body}</p>
               </div>
             );
           })}
         </div>
-        <div className="mt-4 space-y-2">
+        <div className="mt-6 space-y-2 border-t border-slate-200 pt-4">
           <Textarea value={reply} onChange={(e) => setReply(e.target.value)} placeholder="Type your reply..." />
           {error && <p className="text-sm text-red-600">{error}</p>}
           <Button onClick={handleReply} disabled={loading}>
-            {loading ? "Sending..." : "Send Reply"}
+            {loading ? "Sending..." : "Add comment"}
           </Button>
         </div>
       </div>

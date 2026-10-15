@@ -1,22 +1,55 @@
 @import "tailwindcss";
 
+/*
+ * Jira / Atlassian Design System look.
+ * `ourcloud-*` is the app's accent scale (now Atlassian blue) and `slate-*` is
+ * remapped to Atlassian's blue-grey neutrals, so existing utility classes pick
+ * up the Jira palette without touching every component.
+ */
 @theme {
-  --color-ourcloud-50: #ecfeff;
-  --color-ourcloud-100: #cffafe;
-  --color-ourcloud-200: #a5f3fc;
-  --color-ourcloud-300: #67e8f9;
-  --color-ourcloud-400: #22d3ee;
-  --color-ourcloud-500: #06b6d4;
-  --color-ourcloud-600: #0891b2;
-  --color-ourcloud-700: #0e7490;
-  --color-ourcloud-800: #155e75;
-  --color-ourcloud-900: #164e63;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Ubuntu,
+    "Noto Sans", sans-serif;
 
-  --color-reply: #3b82f6;
-  --color-internal: #f59e0b;
-  --color-system: #9ca3af;
+  --color-ourcloud-50: #e9f2ff;
+  --color-ourcloud-100: #cce0ff;
+  --color-ourcloud-200: #85b8ff;
+  --color-ourcloud-300: #579dff;
+  --color-ourcloud-400: #388bff;
+  --color-ourcloud-500: #1d7afc;
+  --color-ourcloud-600: #0c66e4;
+  --color-ourcloud-700: #0055cc;
+  --color-ourcloud-800: #09326c;
+  --color-ourcloud-900: #092957;
+
+  --color-slate-50: #f7f8f9;
+  --color-slate-100: #f1f2f4;
+  --color-slate-200: #dcdfe4;
+  --color-slate-300: #b3b9c4;
+  --color-slate-400: #8590a2;
+  --color-slate-500: #626f86;
+  --color-slate-600: #44546f;
+  --color-slate-700: #2c3e5d;
+  --color-slate-800: #172b4d;
+  --color-slate-900: #172b4d;
+  --color-slate-950: #091e42;
+
+  --color-reply: #0c66e4;
+  --color-internal: #f5cd47;
+  --color-system: #8590a2;
+
+  /* Jira uses tight 3–4px corners */
+  --radius-md: 3px;
+  --radius-lg: 4px;
+  --radius-xl: 4px;
+  --radius-2xl: 6px;
+
+  --shadow-card: 0 1px 1px #091e4240, 0 0 1px #091e424f;
+  --shadow-overlay: 0 8px 12px #091e4226, 0 0 1px #091e424f;
+  --shadow-sm: 0 1px 1px #091e4240, 0 0 1px #091e424f;
+  --shadow-md: 0 8px 12px #091e4226, 0 0 1px #091e424f;
+  --shadow-lg: 0 8px 12px #091e4226, 0 0 1px #091e424f;
 }
 
 body {
-  @apply bg-slate-50 text-slate-900;
+  @apply bg-white text-[14px] text-slate-900;
 }

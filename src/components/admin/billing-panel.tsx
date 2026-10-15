@@ -156,7 +156,7 @@ export function BillingPanel() {
         <div>
           <label className="block text-xs text-slate-500 mb-1">Contract</label>
           <select
-            className="rounded-lg border border-slate-200 px-3 py-2 text-sm min-w-[220px]"
+            className="rounded-[3px] border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 placeholder:text-slate-400 hover:bg-slate-50 focus:border-ourcloud-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-ourcloud-400 min-w-[220px]"
             value={contractId}
             onChange={(e) => setContractId(e.target.value)}
           >

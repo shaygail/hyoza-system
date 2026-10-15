@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { listRoutingCategories } from "@/domain/routing";
+import { PageHeader } from "@/components/ui/page-header";
 import { CreateTicketForm } from "@/components/tickets/create-ticket-form";
 
 export default async function NewTicketPage() {
@@ -29,7 +30,7 @@ export default async function NewTicketPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-semibold text-slate-900">Create Ticket</h1>
+      <PageHeader title="Create ticket" breadcrumbs={[{ label: "Tickets", href: "/app/tickets" }]} />
       <CreateTicketForm
         metadata={{ priorities, ticketTypes, technicians, routingCategories, organisations }}
       />

@@ -1,3 +1,4 @@
+import { Header } from "@/components/layout/header";
 import { Sidebar } from "@/components/layout/sidebar";
 import { auth } from "@/lib/auth";
 
@@ -5,12 +6,12 @@ export default async function AgentLayout({ children }: { children: React.ReactN
   const session = await auth();
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#f1f5f9]">
-      <Sidebar
-        permissions={session?.user?.permissions ?? []}
-        userName={session?.user?.name}
-      />
-      <main className="flex-1 overflow-auto p-6">{children}</main>
+    <div className="flex h-screen flex-col overflow-hidden bg-white">
+      <Header userName={session?.user?.name} />
+      <div className="flex min-h-0 flex-1">
+        <Sidebar permissions={session?.user?.permissions ?? []} />
+        <main className="flex-1 overflow-auto px-10 py-6">{children}</main>
+      </div>
     </div>
   );
 }

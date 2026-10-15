@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { PageHeader } from "@/components/ui/page-header";
 
 const tabs = [
   { href: "/app/admin", label: "Users & Roles", exact: true },
@@ -19,28 +20,36 @@ const tabs = [
   { href: "/app/admin/email", label: "Email" },
 ];
 
+/** Project settings header with Jira-style underlined tabs. */
 export function AdminNav() {
   const pathname = usePathname();
+  const current = tabs.find((t) => (t.exact ? pathname === t.href : pathname.startsWith(t.href)));
 
   return (
-    <nav className="flex flex-wrap gap-2 border-b border-slate-200 pb-2 text-sm">
-      {tabs.map((tab) => {
-        const active = tab.exact ? pathname === tab.href : pathname.startsWith(tab.href);
-        return (
-          <Link
-            key={tab.href}
-            href={tab.href}
-            className={cn(
-              "px-3 py-1.5 rounded-lg transition-colors",
-              active
-                ? "font-medium text-ourcloud-600 bg-ourcloud-50"
-                : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
-            )}
-          >
-            {tab.label}
-          </Link>
-        );
-      })}
-    </nav>
+    <div className="space-y-4">
+      <PageHeader
+        title="Project settings"
+        breadcrumbs={current ? [{ label: "Project settings", href: "/app/admin" }, { label: current.label }] : []}
+      />
+      <nav className="flex gap-1 overflow-x-auto border-b-2 border-slate-200 text-sm">
+        {tabs.map((tab) => {
+          const active = tab.exact ? pathname === tab.href : pathname.startsWith(tab.href);
+          return (
+            <Link
+              key={tab.href}
+              href={tab.href}
+              className={cn(
+                "-mb-0.5 whitespace-nowrap border-b-2 px-2 pb-2 pt-1 font-medium transition-colors",
+                active
+                  ? "border-ourcloud-600 text-ourcloud-700"
+                  : "border-transparent text-slate-600 hover:border-slate-300 hover:text-slate-900"
+              )}
+            >
+              {tab.label}
+            </Link>
+          );
+        })}
+      </nav>
+    </div>
   );
 }

@@ -2,7 +2,8 @@ import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { getQueueTickets } from "@/domain/queues";
 import { prisma } from "@/lib/prisma";
-import { Badge } from "@/components/ui/badge";
+import { Avatar, PriorityLabel, StatusLozenge, TypeIcon } from "@/components/ui/jira";
+import { PageHeader } from "@/components/ui/page-header";
 import { formatDate } from "@/lib/utils";
 
 export default async function QueueDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -17,37 +18,68 @@ export default async function QueueDetailPage({ params }: { params: Promise<{ id
 
   return (
     <div className="space-y-4">
-      <div>
-        <Link href="/app/queues" className="text-sm text-ourcloud-600 hover:underline">← Queues</Link>
-        <h1 className="mt-2 text-2xl font-semibold text-slate-900">{queue.name}</h1>
-        <p className="text-sm text-slate-500">{tickets.length} tickets</p>
-      </div>
+      <PageHeader
+        title={queue.name}
+        description={`${tickets.length} ${tickets.length === 1 ? "ticket" : "tickets"}`}
+        breadcrumbs={[{ label: "Queues", href: "/app/queues" }]}
+      />
 
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-        <table className="w-full text-sm">
-          <thead className="border-b border-slate-200 bg-slate-50">
-            <tr>
-              <th className="px-4 py-3 text-left font-medium text-slate-600">#</th>
-              <th className="px-4 py-3 text-left font-medium text-slate-600">Subject</th>
-              <th className="px-4 py-3 text-left font-medium text-slate-600">Customer</th>
-              <th className="px-4 py-3 text-left font-medium text-slate-600">Status</th>
-              <th className="px-4 py-3 text-left font-medium text-slate-600">Priority</th>
-              <th className="px-4 py-3 text-left font-medium text-slate-600">Updated</th>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[760px] text-sm">
+          <thead className="border-b-2 border-slate-200">
+            <tr className="text-left text-xs font-semibold text-slate-500">
+              <th className="w-10 px-2 py-2">Type</th>
+              <th className="w-28 px-2 py-2">Key</th>
+              <th className="px-2 py-2">Summary</th>
+              <th className="px-2 py-2">Customer</th>
+              <th className="px-2 py-2">Assignee</th>
+              <th className="px-2 py-2">Priority</th>
+              <th className="px-2 py-2">Status</th>
+              <th className="px-2 py-2">Updated</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody>
+            {tickets.length === 0 && (
+              <tr>
+                <td colSpan={8} className="px-2 py-10 text-center text-slate-500">
+                  This queue is empty.
+                </td>
+              </tr>
+            )}
             {tickets.map((ticket) => (
-              <tr key={ticket.id} className="hover:bg-slate-50">
-                <td className="px-4 py-3">
-                  <Link href={`/app/tickets/${ticket.id}`} className="font-mono text-ourcloud-600 hover:underline">
+              <tr key={ticket.id} className="h-10 border-b border-slate-200 hover:bg-slate-100">
+                <td className="px-2">
+                  <TypeIcon name={ticket.ticketType?.name} />
+                </td>
+                <td className="whitespace-nowrap px-2">
+                  <Link href={`/app/tickets/${ticket.id}`} className="text-ourcloud-700 hover:underline">
                     {ticket.ticketNumber}
                   </Link>
                 </td>
-                <td className="px-4 py-3 font-medium">{ticket.subject}</td>
-                <td className="px-4 py-3 text-slate-600">{ticket.organisation.name}</td>
-                <td className="px-4 py-3"><Badge color={ticket.status.color}>{ticket.status.name}</Badge></td>
-                <td className="px-4 py-3"><Badge color={ticket.priority.color}>{ticket.priority.name}</Badge></td>
-                <td className="px-4 py-3 text-slate-400">{formatDate(ticket.updatedAt)}</td>
+                <td className="px-2">
+                  <Link
+                    href={`/app/tickets/${ticket.id}`}
+                    className="block min-w-[200px] max-w-[420px] truncate text-slate-900 hover:underline"
+                  >
+                    {ticket.subject}
+                  </Link>
+                </td>
+                <td className="whitespace-nowrap px-2 text-slate-900">{ticket.organisation.name}</td>
+                <td className="whitespace-nowrap px-2">
+                  <span className="inline-flex items-center gap-2">
+                    <Avatar name={ticket.assignee?.name} size={24} />
+                    <span className={ticket.assignee ? "text-slate-900" : "text-slate-500"}>
+                      {ticket.assignee?.name ?? "Unassigned"}
+                    </span>
+                  </span>
+                </td>
+                <td className="whitespace-nowrap px-2">
+                  <PriorityLabel name={ticket.priority.name} />
+                </td>
+                <td className="px-2">
+                  <StatusLozenge status={ticket.status} />
+                </td>
+                <td className="whitespace-nowrap px-2 text-slate-600">{formatDate(ticket.updatedAt)}</td>
               </tr>
             ))}
           </tbody>

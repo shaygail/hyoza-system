@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/input";
+import { Avatar, PriorityIcon } from "@/components/ui/jira";
+import { PageHeader } from "@/components/ui/page-header";
 import { formatDate } from "@/lib/utils";
 import { ContactPortalAccess } from "@/components/customers/contact-portal-access";
 
@@ -146,22 +148,26 @@ export function AccountDetailClient({
 
   return (
     <div className="space-y-6">
-      <div>
-        <Link href="/app/customers" className="text-sm text-ourcloud-600 hover:underline">← CRM</Link>
-        <h1 className="mt-2 text-2xl font-semibold text-slate-900">{account.name}</h1>
-        <p className="text-sm text-slate-500">
-          {account.accountCode && `Account: ${account.accountCode} · `}
-          {account.email} {account.phone && `· ${account.phone}`}
-        </p>
-      </div>
+      <PageHeader
+        title={account.name}
+        breadcrumbs={[{ label: "Customers", href: "/app/customers" }]}
+        description={
+          <>
+            {account.accountCode && `Account ${account.accountCode} · `}
+            {account.email} {account.phone && `· ${account.phone}`}
+          </>
+        }
+      />
 
-      <div className="flex flex-wrap gap-1 border-b border-slate-200 pb-2">
+      <div className="flex gap-1 overflow-x-auto border-b-2 border-slate-200 text-sm">
         {tabs.map((t) => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
-            className={`rounded-lg px-3 py-1.5 text-sm ${
-              tab === t.id ? "bg-ourcloud-50 text-ourcloud-700 font-medium" : "text-slate-500 hover:bg-slate-50"
+            className={`-mb-0.5 whitespace-nowrap border-b-2 px-2 pb-2 pt-1 font-medium transition-colors ${
+              tab === t.id
+                ? "border-ourcloud-600 text-ourcloud-700"
+                : "border-transparent text-slate-600 hover:border-slate-300 hover:text-slate-900"
             }`}
           >
             {t.label}
@@ -195,14 +201,14 @@ export function AccountDetailClient({
                 {(["name", "accountCode", "email", "phone", "taxId", "billingEmail", "paymentTerms"] as const).map((field) => (
                   <input
                     key={field}
-                    className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                    className="rounded-[3px] border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 placeholder:text-slate-400 hover:bg-slate-50 focus:border-ourcloud-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-ourcloud-400"
                     placeholder={field}
                     value={edit[field]}
                     onChange={(e) => setEdit({ ...edit, [field]: e.target.value })}
                   />
                 ))}
                 <input
-                  className="rounded-lg border border-slate-200 px-3 py-2 text-sm md:col-span-2"
+                  className="rounded-[3px] border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 placeholder:text-slate-400 hover:bg-slate-50 focus:border-ourcloud-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-ourcloud-400 md:col-span-2"
                   placeholder="address"
                   value={edit.address}
                   onChange={(e) => setEdit({ ...edit, address: e.target.value })}
@@ -225,18 +231,23 @@ export function AccountDetailClient({
         <div className="space-y-4">
           {canEdit && (
             <div className="rounded-xl border border-slate-200 bg-white p-4 flex flex-wrap gap-2">
-              <input className="rounded-lg border px-3 py-2 text-sm" placeholder="Name" value={contactForm.name} onChange={(e) => setContactForm({ ...contactForm, name: e.target.value })} />
-              <input className="rounded-lg border px-3 py-2 text-sm" placeholder="Email" value={contactForm.email} onChange={(e) => setContactForm({ ...contactForm, email: e.target.value })} />
-              <input className="rounded-lg border px-3 py-2 text-sm" placeholder="Phone" value={contactForm.phone} onChange={(e) => setContactForm({ ...contactForm, phone: e.target.value })} />
-              <input className="rounded-lg border px-3 py-2 text-sm" placeholder="Job title" value={contactForm.jobTitle} onChange={(e) => setContactForm({ ...contactForm, jobTitle: e.target.value })} />
+              <input className="rounded-[3px] border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 placeholder:text-slate-400 hover:bg-slate-50 focus:border-ourcloud-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-ourcloud-400" placeholder="Name" value={contactForm.name} onChange={(e) => setContactForm({ ...contactForm, name: e.target.value })} />
+              <input className="rounded-[3px] border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 placeholder:text-slate-400 hover:bg-slate-50 focus:border-ourcloud-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-ourcloud-400" placeholder="Email" value={contactForm.email} onChange={(e) => setContactForm({ ...contactForm, email: e.target.value })} />
+              <input className="rounded-[3px] border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 placeholder:text-slate-400 hover:bg-slate-50 focus:border-ourcloud-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-ourcloud-400" placeholder="Phone" value={contactForm.phone} onChange={(e) => setContactForm({ ...contactForm, phone: e.target.value })} />
+              <input className="rounded-[3px] border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 placeholder:text-slate-400 hover:bg-slate-50 focus:border-ourcloud-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-ourcloud-400" placeholder="Job title" value={contactForm.jobTitle} onChange={(e) => setContactForm({ ...contactForm, jobTitle: e.target.value })} />
               <Button size="sm" onClick={addContact}>Add contact</Button>
             </div>
           )}
           {account.contacts.map((c) => (
-            <div key={c.id} className="rounded-xl border border-slate-200 bg-white p-4">
-              <p className="font-medium">{c.name}{c.isPrimary ? " (Primary)" : ""}</p>
-              <p className="text-sm text-slate-500">{c.email} {c.phone && `· ${c.phone}`}</p>
-              {c.jobTitle && <p className="text-xs text-slate-400">{c.jobTitle}</p>}
+            <div key={c.id} className="flex gap-3 rounded-[4px] border border-slate-200 p-4">
+              <Avatar name={c.name} size={32} />
+              <div className="min-w-0 flex-1">
+              <p className="flex items-center gap-2 font-medium text-slate-900">
+                {c.name}
+                {c.isPrimary && <Badge color="#3b82f6">Primary</Badge>}
+              </p>
+              <p className="text-sm text-slate-600">{c.email} {c.phone && `· ${c.phone}`}</p>
+              {c.jobTitle && <p className="text-xs text-slate-500">{c.jobTitle}</p>}
               <div className="mt-2">
                 <ContactPortalAccess
                   contactId={c.id}
@@ -244,6 +255,7 @@ export function AccountDetailClient({
                   hasPortalUser={!!c.user}
                   portalAccess={c.portalAccess}
                 />
+              </div>
               </div>
             </div>
           ))}
@@ -269,18 +281,17 @@ export function AccountDetailClient({
       )}
 
       {tab === "tickets" && (
-        <div className="rounded-xl border border-slate-200 bg-white divide-y">
+        <div className="divide-y divide-slate-200 border-y border-slate-200">
           {(tickets ?? []).length === 0 ? (
             <p className="p-4 text-sm text-slate-500">No tickets.</p>
           ) : (
             (tickets ?? []).map((t) => (
-              <Link key={t.id} href={`/app/tickets/${t.id}`} className="block px-4 py-3 hover:bg-slate-50">
-                <div className="flex gap-2 items-center">
-                  <span className="font-mono text-xs text-slate-400">{t.ticketNumber}</span>
-                  <Badge color={t.status.color}>{t.status.name}</Badge>
-                </div>
-                <p className="text-sm font-medium">{t.subject}</p>
-                <p className="text-xs text-slate-400">{formatDate(t.updatedAt)}</p>
+              <Link key={t.id} href={`/app/tickets/${t.id}`} className="flex h-10 items-center gap-3 px-2 hover:bg-slate-100">
+                <PriorityIcon name={t.priority.name} />
+                <span className="w-24 shrink-0 text-sm text-ourcloud-700">{t.ticketNumber}</span>
+                <span className="min-w-0 flex-1 truncate text-sm text-slate-900">{t.subject}</span>
+                <Badge color={t.status.color}>{t.status.name}</Badge>
+                <span className="hidden w-36 shrink-0 text-right text-xs text-slate-500 md:block">{formatDate(t.updatedAt)}</span>
               </Link>
             ))
           )}
@@ -288,13 +299,14 @@ export function AccountDetailClient({
       )}
 
       {tab === "assets" && (
-        <div className="rounded-xl border border-slate-200 bg-white divide-y">
+        <div className="divide-y divide-slate-200 border-y border-slate-200">
           {account.assets.length === 0 ? (
             <p className="p-4 text-sm text-slate-500">No assets.</p>
           ) : (
             account.assets.map((a) => (
-              <Link key={a.id} href={`/app/assets/${a.id}`} className="block px-4 py-3 hover:bg-slate-50">
-                <span className="font-mono text-sm">{a.assetTag}</span> — {a.name}
+              <Link key={a.id} href={`/app/assets/${a.id}`} className="flex h-10 items-center gap-3 px-2 text-sm hover:bg-slate-100">
+                <span className="w-28 shrink-0 text-ourcloud-700">{a.assetTag}</span>
+                <span className="text-slate-900">{a.name}</span>
               </Link>
             ))
           )}

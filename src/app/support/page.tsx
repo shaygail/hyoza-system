@@ -19,21 +19,21 @@ export default async function SupportPage() {
 
   return (
     <PortalPublicShell config={config}>
-      <section className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm md:p-12">
-        <h1 className="text-3xl font-semibold text-slate-900 md:text-4xl">
+      <section className="rounded-[4px] px-8 py-12 text-white md:px-12" style={{ backgroundColor: primary }}>
+        <h1 className="text-3xl font-semibold md:text-4xl">
           {config.tenantName} {config.portalTitle}
         </h1>
-        <p className="mt-4 max-w-2xl text-lg text-slate-600">{config.welcomeMessage}</p>
+        <p className="mt-3 max-w-2xl text-lg text-white/85">{config.welcomeMessage}</p>
         <div className="mt-8">
           <Link href="/support/submit">
-            <Button style={{ backgroundColor: primary }} className="text-white hover:opacity-90">
-              <MessageSquarePlus className="mr-2 h-4 w-4" />
-              Submit a support request
+            <Button size="lg" className="bg-white text-slate-900 hover:bg-slate-100">
+              <MessageSquarePlus className="mr-2 h-4 w-4" style={{ color: primary }} />
+              Raise a request
             </Button>
           </Link>
         </div>
-        <p className="mt-4 text-sm text-slate-500">
-          No sign-in required. We&apos;ll email you a link to track your ticket and notify you of updates.
+        <p className="mt-4 text-sm text-white/75">
+          No sign-in required. We&apos;ll email you a link to track your request and notify you of updates.
         </p>
       </section>
 
@@ -47,7 +47,7 @@ export default async function SupportPage() {
             {config.articles.map((article) => (
               <div
                 key={article.id}
-                className="rounded-xl border border-slate-200 bg-white p-5"
+                className="rounded-[4px] bg-white p-5 shadow-card"
               >
                 <h3 className="font-medium text-slate-900">{article.title}</h3>
                 <p className="mt-2 line-clamp-2 text-sm text-slate-500">

@@ -294,18 +294,18 @@ export function AdminSettingsPanel({ activeTab }: { activeTab: AdminTab }) {
             placeholder="Label"
             value={newField.label}
             onChange={(e) => setNewField({ ...newField, label: e.target.value })}
-            className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
+            className="rounded-[3px] border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 placeholder:text-slate-400 hover:bg-slate-50 focus:border-ourcloud-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-ourcloud-400"
           />
           <input
             placeholder="code_snake_case"
             value={newField.code}
             onChange={(e) => setNewField({ ...newField, code: e.target.value })}
-            className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-mono"
+            className="rounded-[3px] border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 placeholder:text-slate-400 hover:bg-slate-50 focus:border-ourcloud-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-ourcloud-400 font-mono"
           />
           <select
             value={newField.fieldType}
             onChange={(e) => setNewField({ ...newField, fieldType: e.target.value })}
-            className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
+            className="rounded-[3px] border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 placeholder:text-slate-400 hover:bg-slate-50 focus:border-ourcloud-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-ourcloud-400"
           >
             <option value="text">Text</option>
             <option value="number">Number</option>
@@ -318,7 +318,7 @@ export function AdminSettingsPanel({ activeTab }: { activeTab: AdminTab }) {
           <p className="text-slate-500">No custom fields defined.</p>
         ) : (
           <table className="w-full text-sm rounded-xl border border-slate-200 overflow-hidden bg-white">
-            <thead className="bg-slate-50">
+            <thead className="border-b-2 border-slate-200 text-xs font-semibold text-slate-500">
               <tr>
                 <th className="px-4 py-2 text-left">Label</th>
                 <th className="px-4 py-2 text-left">Code</th>
@@ -463,13 +463,13 @@ export function AdminSettingsPanel({ activeTab }: { activeTab: AdminTab }) {
             placeholder="Mailbox name"
             value={newMailbox.name}
             onChange={(e) => setNewMailbox({ ...newMailbox, name: e.target.value })}
-            className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
+            className="rounded-[3px] border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 placeholder:text-slate-400 hover:bg-slate-50 focus:border-ourcloud-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-ourcloud-400"
           />
           <input
             placeholder="email@domain.local"
             value={newMailbox.emailAddress}
             onChange={(e) => setNewMailbox({ ...newMailbox, emailAddress: e.target.value })}
-            className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
+            className="rounded-[3px] border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 placeholder:text-slate-400 hover:bg-slate-50 focus:border-ourcloud-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-ourcloud-400"
           />
           <Button size="sm" onClick={addMailbox}>Add Mailbox</Button>
         </div>

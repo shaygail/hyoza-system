@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { SoftBadge } from "@/components/ui/badge";
+import { PriorityIcon } from "@/components/ui/jira";
 import { formatDate } from "@/lib/utils";
 import { Settings2, Plus } from "lucide-react";
 import type { DashboardWidgetId } from "@/domain/dashboard";
@@ -81,17 +82,17 @@ export function EditableDashboard({ stats, userName }: { stats: Stats; userName:
       </div>
 
       {editMode && (
-        <div className="rounded-xl border border-ourcloud-200 bg-ourcloud-50 p-4">
-          <p className="mb-3 text-sm font-medium text-ourcloud-800">Choose widgets to display</p>
+        <div className="rounded-[4px] border border-slate-200 bg-slate-50 p-4">
+          <p className="mb-3 text-sm font-semibold text-slate-900">Choose gadgets to display</p>
           <div className="flex flex-wrap gap-2">
             {(Object.keys(WIDGET_META) as DashboardWidgetId[]).map((id) => (
               <button
                 key={id}
                 onClick={() => toggleWidget(id)}
-                className={`rounded-lg border px-3 py-2 text-sm transition-colors ${
+                className={`h-8 rounded-[3px] px-3 text-sm font-medium transition-colors ${
                   show(id)
-                    ? "border-ourcloud-500 bg-ourcloud-100 text-ourcloud-800"
-                    : "border-slate-200 bg-white text-slate-600"
+                    ? "bg-ourcloud-50 text-ourcloud-700 ring-1 ring-ourcloud-400"
+                    : "bg-[#091e420f] text-slate-600 hover:bg-[#091e4224]"
                 }`}
               >
                 {WIDGET_META[id].label}
@@ -116,54 +117,74 @@ export function EditableDashboard({ stats, userName }: { stats: Stats; userName:
         )}
       </div>
 
-      {show("slaAtRisk") && stats.slaAtRisk.length > 0 && (
-        <div className="rounded-xl border border-red-200 bg-red-50">
-          <div className="border-b border-red-200 px-4 py-3 font-medium text-red-800">SLA At Risk</div>
-          <div className="divide-y divide-red-100">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+        {show("slaAtRisk") && stats.slaAtRisk.length > 0 && (
+          <Gadget title="SLA at risk" count={stats.slaAtRisk.length}>
             {stats.slaAtRisk.map((ticket) => (
-              <Link key={ticket.id} href={`/app/tickets/${ticket.id}`} className="block px-4 py-3 hover:bg-red-100/50">
-                <span className="font-mono text-xs text-red-600">{ticket.ticketNumber}</span>
-                <p className="text-sm font-medium text-red-900">{ticket.subject}</p>
+              <Link
+                key={ticket.id}
+                href={`/app/tickets/${ticket.id}`}
+                className="flex items-center gap-3 px-4 py-2 hover:bg-slate-100"
+              >
+                <span className="w-24 shrink-0 text-sm text-ourcloud-700">{ticket.ticketNumber}</span>
+                <span className="min-w-0 flex-1 truncate text-sm text-slate-900">{ticket.subject}</span>
+                {ticket.resolutionDueAt && (
+                  <span className="shrink-0 text-xs text-slate-500">{formatDate(ticket.resolutionDueAt)}</span>
+                )}
               </Link>
             ))}
-          </div>
-        </div>
-      )}
+          </Gadget>
+        )}
 
-      {show("myTickets") && (
-        <div className="rounded-xl border border-slate-200 bg-white">
-          <div className="border-b border-slate-200 px-4 py-3 font-medium">My Open Tickets</div>
-          <div className="divide-y divide-slate-100">
+        {show("myTickets") && (
+          <Gadget title="Assigned to me" count={stats.myTickets.length}>
             {stats.myTickets.length === 0 ? (
-              <p className="p-6 text-sm text-slate-500">No open tickets assigned to you.</p>
+              <p className="px-4 py-6 text-sm text-slate-500">No open tickets assigned to you.</p>
             ) : (
               stats.myTickets.map((ticket) => (
-                <Link key={ticket.id} href={`/app/tickets/${ticket.id}`} className="flex items-center justify-between px-4 py-3 hover:bg-slate-50">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-mono text-slate-400">{ticket.ticketNumber}</span>
-                      <Badge color={ticket.status.color}>{ticket.status.name}</Badge>
-                      <Badge color={ticket.priority.color}>{ticket.priority.name}</Badge>
-                    </div>
-                    <p className="mt-1 text-sm font-medium">{ticket.subject}</p>
-                    <p className="text-xs text-slate-500">{ticket.organisation.name}</p>
+                <Link
+                  key={ticket.id}
+                  href={`/app/tickets/${ticket.id}`}
+                  className="flex items-center gap-3 px-4 py-2 hover:bg-slate-100"
+                >
+                  <PriorityIcon name={ticket.priority.name} />
+                  <span className="w-24 shrink-0 text-sm text-ourcloud-700">{ticket.ticketNumber}</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm text-slate-900">{ticket.subject}</p>
+                    <p className="truncate text-xs text-slate-500">{ticket.organisation.name}</p>
                   </div>
-                  <span className="text-xs text-slate-400">{formatDate(ticket.updatedAt)}</span>
+                  <SoftBadge color={ticket.status.color}>{ticket.status.name}</SoftBadge>
                 </Link>
               ))
             )}
-          </div>
-        </div>
-      )}
+          </Gadget>
+        )}
+      </div>
     </div>
+  );
+}
+
+/** Jira dashboard gadget: bordered panel with a title bar. */
+function Gadget({ title, count, children }: { title: string; count: number; children: React.ReactNode }) {
+  return (
+    <section className="rounded-[4px] border border-slate-200">
+      <h2 className="flex items-center gap-2 border-b border-slate-200 px-4 py-3 text-sm font-semibold text-slate-900">
+        {title}
+        <span className="rounded-full bg-slate-200 px-1.5 text-xs font-semibold text-slate-700">{count}</span>
+      </h2>
+      <div className="max-h-[420px] overflow-y-auto py-1">{children}</div>
+    </section>
   );
 }
 
 function StatCard({ label, value, href, alert }: { label: string; value: number; href: string; alert?: boolean }) {
   return (
-    <Link href={href} className={`rounded-xl border bg-white p-6 transition-colors ${alert ? "border-red-200" : "border-slate-200 hover:border-ourcloud-200"}`}>
-      <p className="text-sm text-slate-500">{label}</p>
-      <p className={`mt-2 text-3xl font-semibold ${alert ? "text-red-600" : "text-ourcloud-700"}`}>{value}</p>
+    <Link
+      href={href}
+      className="rounded-[4px] border border-slate-200 p-4 transition-colors hover:bg-slate-50"
+    >
+      <p className="text-sm font-semibold text-slate-600">{label}</p>
+      <p className={`mt-1 text-[28px] font-medium leading-9 ${alert ? "text-[#c9372c]" : "text-slate-900"}`}>{value}</p>
     </Link>
   );
 }

@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/ui/page-header";
 import { formatDate } from "@/lib/utils";
 
 interface Entry {
@@ -43,7 +44,7 @@ export function TimeEntriesClient({
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-semibold text-slate-900">Time Entries</h1>
+      <PageHeader title="Time tracking" description="Logged work across all tickets." />
 
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         <div className="rounded-xl border border-slate-200 bg-white p-4">
@@ -64,21 +65,21 @@ export function TimeEntriesClient({
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+      <div className="overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="border-b border-slate-200 bg-slate-50">
+          <thead className="border-b-2 border-slate-200">
             <tr>
-              <th className="px-4 py-3 text-left font-medium text-slate-600">Ticket</th>
-              <th className="px-4 py-3 text-left font-medium text-slate-600">Technician</th>
-              <th className="px-4 py-3 text-left font-medium text-slate-600">Duration</th>
-              <th className="px-4 py-3 text-left font-medium text-slate-600">Work Type</th>
-              <th className="px-4 py-3 text-left font-medium text-slate-600">Contract</th>
-              <th className="px-4 py-3 text-left font-medium text-slate-600">Status</th>
-              <th className="px-4 py-3 text-left font-medium text-slate-600">Date</th>
-              {canApprove && <th className="px-4 py-3 text-left font-medium text-slate-600">Actions</th>}
+              <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500">Ticket</th>
+              <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500">Technician</th>
+              <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500">Duration</th>
+              <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500">Work Type</th>
+              <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500">Contract</th>
+              <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500">Status</th>
+              <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500">Date</th>
+              {canApprove && <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500">Actions</th>}
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-slate-200">
             {entries.length === 0 ? (
               <tr>
                 <td colSpan={canApprove ? 8 : 7} className="px-4 py-8 text-center text-slate-500">
@@ -88,16 +89,16 @@ export function TimeEntriesClient({
             ) : (
               entries.map((e) => (
                 <tr key={e.id}>
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-2.5">
                     <Link href={`/app/tickets/${e.ticket.id}`} className="font-mono text-ourcloud-600 hover:underline">
                       {e.ticket.ticketNumber}
                     </Link>
                   </td>
-                  <td className="px-4 py-3">{e.user.name}</td>
-                  <td className="px-4 py-3">{e.durationMinutes}m</td>
-                  <td className="px-4 py-3">{e.workType?.name ?? "—"}</td>
-                  <td className="px-4 py-3 text-slate-500">{e.contract?.name ?? "—"}</td>
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-2.5">{e.user.name}</td>
+                  <td className="px-3 py-2.5">{e.durationMinutes}m</td>
+                  <td className="px-3 py-2.5">{e.workType?.name ?? "—"}</td>
+                  <td className="px-3 py-2.5 text-slate-500">{e.contract?.name ?? "—"}</td>
+                  <td className="px-3 py-2.5">
                     <Badge
                       color={
                         e.status === "approved" ? "#22c55e" : e.status === "rejected" ? "#ef4444" : "#f59e0b"
@@ -106,9 +107,9 @@ export function TimeEntriesClient({
                       {e.status}
                     </Badge>
                   </td>
-                  <td className="px-4 py-3 text-slate-400">{formatDate(e.createdAt)}</td>
+                  <td className="px-3 py-2.5 text-slate-400">{formatDate(e.createdAt)}</td>
                   {canApprove && (
-                    <td className="px-4 py-3">
+                    <td className="px-3 py-2.5">
                       {e.status === "submitted" && (
                         <div className="flex gap-1">
                           <Button size="sm" variant="secondary" onClick={() => setStatus(e.id, "approve")}>

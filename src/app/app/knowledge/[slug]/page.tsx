@@ -1,8 +1,8 @@
 import { getKbArticle } from "@/domain/knowledge-base";
 import { auth } from "@/lib/auth";
 import { redirect, notFound } from "next/navigation";
-import Link from "next/link";
 import { formatDate } from "@/lib/utils";
+import { PageHeader } from "@/components/ui/page-header";
 
 export default async function KnowledgeArticlePage({
   params,
@@ -18,20 +18,18 @@ export default async function KnowledgeArticlePage({
 
   return (
     <div className="max-w-3xl space-y-6">
-      <Link href="/app/knowledge" className="text-sm text-ourcloud-600 hover:underline">
-        ← Back to Knowledge Base
-      </Link>
-      <div>
-        <h1 className="text-2xl font-semibold text-slate-900">{article.title}</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          {article.author.name}
-          {article.category && ` · ${article.category.name}`}
-          {article.publishedAt && ` · ${formatDate(article.publishedAt)}`}
-        </p>
-      </div>
-      <div className="prose prose-slate max-w-none rounded-xl border border-slate-200 bg-white p-6">
-        <div className="whitespace-pre-wrap text-slate-700">{article.body}</div>
-      </div>
+      <PageHeader
+        title={article.title}
+        breadcrumbs={[{ label: "Knowledge base", href: "/app/knowledge" }]}
+        description={
+          <>
+            {article.author.name}
+            {article.category && ` · ${article.category.name}`}
+            {article.publishedAt && ` · ${formatDate(article.publishedAt)}`}
+          </>
+        }
+      />
+      <div className="whitespace-pre-wrap text-sm leading-6 text-slate-900">{article.body}</div>
     </div>
   );
 }

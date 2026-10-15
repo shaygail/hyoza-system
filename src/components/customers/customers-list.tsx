@@ -4,6 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { PageHeader } from "@/components/ui/page-header";
 
 interface OrgRow {
   id: string;
@@ -45,60 +47,60 @@ export function CustomersListClient({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900">CRM — Accounts</h1>
-          <p className="text-sm text-slate-500">Organisation accounts and contacts.</p>
-        </div>
-        {canEdit && (
-          <Button size="sm" onClick={() => setShowForm(!showForm)}>
-            {showForm ? "Cancel" : "New account"}
-          </Button>
-        )}
-      </div>
+      <PageHeader
+        title="Customers"
+        description="Organisation accounts and their contacts."
+        actions={
+          canEdit && (
+            <Button variant={showForm ? "secondary" : "default"} onClick={() => setShowForm(!showForm)}>
+              {showForm ? "Cancel" : "Add customer"}
+            </Button>
+          )
+        }
+      />
 
       {showForm && (
-        <div className="rounded-xl border border-slate-200 bg-white p-4 flex flex-wrap gap-2">
-          <input
-            className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
+        <div className="flex flex-wrap items-center gap-2 rounded-[4px] border border-slate-200 bg-slate-50 p-4">
+          <Input
+            className="w-64"
             placeholder="Account name"
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
-          <input
-            className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
+          <Input
+            className="w-48"
             placeholder="Account code"
             value={accountCode}
             onChange={(e) => setAccountCode(e.target.value)}
           />
-          <Button size="sm" onClick={createOrg}>Create</Button>
+          <Button onClick={createOrg}>Create</Button>
           {error && <p className="w-full text-sm text-red-600">{error}</p>}
         </div>
       )}
 
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+      <div className="overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="border-b border-slate-200 bg-slate-50">
+          <thead className="border-b-2 border-slate-200">
             <tr>
-              <th className="px-4 py-3 text-left font-medium text-slate-600">Organisation</th>
-              <th className="px-4 py-3 text-left font-medium text-slate-600">Account Code</th>
-              <th className="px-4 py-3 text-left font-medium text-slate-600">Contacts</th>
-              <th className="px-4 py-3 text-left font-medium text-slate-600">Tickets</th>
-              <th className="px-4 py-3 text-left font-medium text-slate-600">Status</th>
+              <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500">Organisation</th>
+              <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500">Account Code</th>
+              <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500">Contacts</th>
+              <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500">Tickets</th>
+              <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500">Status</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-slate-200">
             {organisations.map((org) => (
               <tr key={org.id} className="hover:bg-slate-50">
-                <td className="px-4 py-3">
+                <td className="px-3 py-2.5">
                   <Link href={`/app/customers/${org.id}`} className="font-medium text-ourcloud-600 hover:underline">
                     {org.name}
                   </Link>
                 </td>
-                <td className="px-4 py-3 text-slate-600">{org.accountCode ?? "—"}</td>
-                <td className="px-4 py-3 text-slate-600">{org._count.contacts}</td>
-                <td className="px-4 py-3 text-slate-600">{org._count.tickets}</td>
-                <td className="px-4 py-3 capitalize text-slate-600">{org.status}</td>
+                <td className="px-3 py-2.5 text-slate-600">{org.accountCode ?? "—"}</td>
+                <td className="px-3 py-2.5 text-slate-600">{org._count.contacts}</td>
+                <td className="px-3 py-2.5 text-slate-600">{org._count.tickets}</td>
+                <td className="px-3 py-2.5 capitalize text-slate-600">{org.status}</td>
               </tr>
             ))}
           </tbody>

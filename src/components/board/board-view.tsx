@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Badge } from "@/components/ui/badge";
+import { Avatar, PriorityIcon, TypeIcon } from "@/components/ui/jira";
 import { useRouter } from "next/navigation";
 
 interface Ticket {
   id: string;
   ticketNumber: string;
   subject: string;
+  ticketType?: { name: string } | null;
   organisation: { name: string };
   assignee: { name: string } | null;
   priority: { name: string; color: string };
@@ -48,44 +49,42 @@ export function BoardView() {
   }
 
   return (
-    <div className="flex gap-3 overflow-x-auto pb-4">
+    <div className="flex items-start gap-2 overflow-x-auto pb-4">
       {columns.map((col) => (
         <div
           key={col.id}
-          className="flex w-72 shrink-0 flex-col rounded-lg bg-slate-100"
+          className={`flex w-[272px] shrink-0 flex-col rounded-[6px] bg-slate-100 transition-colors ${
+            dragging ? "outline-dashed outline-1 outline-slate-300" : ""
+          }`}
           onDragOver={(e) => e.preventDefault()}
           onDrop={() => handleDrop(col.id)}
         >
-          <div className="flex items-center justify-between px-3 py-2">
-            <div className="flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full" style={{ backgroundColor: col.color }} />
-              <span className="text-sm font-semibold text-slate-700">{col.name}</span>
-            </div>
-            <span className="rounded bg-slate-200 px-2 py-0.5 text-xs text-slate-600">{col.tickets.length}</span>
+          <div className="flex items-center gap-1.5 px-3 pb-1 pt-3">
+            <span className="truncate text-xs font-semibold uppercase text-slate-500">{col.name}</span>
+            <span className="text-xs text-slate-500">{col.tickets.length}</span>
           </div>
-          <div className="flex flex-1 flex-col gap-2 p-2 min-h-[200px]">
+          <div className="flex min-h-[200px] flex-1 flex-col gap-1 p-1">
             {col.tickets.map((ticket) => (
               <div
                 key={ticket.id}
                 draggable
                 onDragStart={() => setDragging(ticket.id)}
+                onDragEnd={() => setDragging(null)}
                 onClick={() => router.push(`/app/tickets/${ticket.id}`)}
-                className="cursor-pointer rounded-md border border-slate-200 bg-white p-3 shadow-sm hover:border-ourcloud-300 transition-colors"
+                className={`cursor-pointer rounded-[3px] bg-white p-3 shadow-card transition-colors hover:bg-slate-50 ${
+                  dragging === ticket.id ? "opacity-50" : ""
+                }`}
               >
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-medium text-ourcloud-600">{ticket.ticketNumber}</span>
-                  <Badge color={ticket.priority.color}>{ticket.priority.name}</Badge>
+                <p className="line-clamp-3 text-sm text-slate-900">{ticket.subject}</p>
+                <p className="mt-1.5 truncate text-xs text-slate-500">{ticket.organisation.name}</p>
+                <div className="mt-2 flex items-center gap-1.5">
+                  <TypeIcon name={ticket.ticketType?.name} />
+                  <span className="text-xs font-medium text-slate-600">{ticket.ticketNumber}</span>
+                  <span className="ml-auto flex items-center gap-1.5">
+                    <PriorityIcon name={ticket.priority.name} />
+                    <Avatar name={ticket.assignee?.name} size={24} />
+                  </span>
                 </div>
-                <p className="mt-1 text-sm font-medium text-slate-900 line-clamp-2">{ticket.subject}</p>
-                <p className="mt-2 text-xs text-slate-500">{ticket.organisation.name}</p>
-                {ticket.assignee && (
-                  <div className="mt-2 flex items-center gap-1">
-                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-ourcloud-100 text-[10px] font-medium text-ourcloud-700">
-                      {ticket.assignee.name.charAt(0)}
-                    </span>
-                    <span className="text-xs text-slate-500">{ticket.assignee.name}</span>
-                  </div>
-                )}
               </div>
             ))}
           </div>

@@ -34,7 +34,7 @@ export default async function SupportConfirmationPage({
         </p>
         <Link
           href="/support/submit"
-          className="mt-6 inline-block text-sm font-medium text-emerald-700 hover:underline"
+          className="mt-6 inline-block text-sm font-medium text-ourcloud-700 hover:underline"
         >
           Submit another request
         </Link>

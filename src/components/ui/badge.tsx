@@ -1,25 +1,10 @@
 import { cn } from "@/lib/utils";
+import { appearanceForColor, lozengeAppearance } from "@/components/ui/jira";
 
-export function Badge({
-  className,
-  color,
-  children,
-}: {
-  className?: string;
-  color?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <span
-      className={cn("inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium text-white", className)}
-      style={{ backgroundColor: color ?? "#6b7280" }}
-    >
-      {children}
-    </span>
-  );
-}
+const lozengeBase =
+  "inline-flex max-w-full items-center truncate rounded-[3px] px-1 text-[11px] font-bold uppercase leading-4";
 
-/** Soft pill like Figma status chips — tinted background + colored text. */
+/** Jira lozenge — tinted background + coloured uppercase text. */
 export function SoftBadge({
   className,
   color,
@@ -29,18 +14,21 @@ export function SoftBadge({
   color?: string;
   children: React.ReactNode;
 }) {
-  const c = (color ?? "#0891b2").replace("#", "");
-  const bg = c.length === 6 ? `#${c}24` : "#ecfeff";
-  const fg = c.length === 6 ? `#${c}` : "#0e7490";
+  const appearance = appearanceForColor(color ?? "#6b7280");
+  if (appearance) {
+    return <span className={cn(lozengeBase, lozengeAppearance[appearance], className)}>{children}</span>;
+  }
+  // Custom colours (e.g. admin-configured statuses) fall back to a tint of that colour.
+  const c = (color ?? "").replace("#", "");
   return (
     <span
-      className={cn(
-        "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold",
-        className
-      )}
-      style={{ backgroundColor: bg, color: fg }}
+      className={cn(lozengeBase, className)}
+      style={{ backgroundColor: `#${c}26`, color: `color-mix(in srgb, #${c} 70%, #172b4d)` }}
     >
       {children}
     </span>
   );
 }
+
+/** Kept for existing call sites; renders the same subtle Jira lozenge. */
+export const Badge = SoftBadge;

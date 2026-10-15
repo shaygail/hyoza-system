@@ -10,14 +10,16 @@ export default function LoginPage() {
   const [state, formAction, pending] = useActionState(loginAction, null);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-ourcloud-50 to-slate-100">
-      <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-        <div className="mb-8 flex flex-col items-center">
-          <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-ourcloud-600 text-white">
-            <Cloud className="h-7 w-7" />
+    <div className="flex min-h-screen flex-col items-center justify-center bg-slate-50 px-4 py-10">
+      <div className="w-full max-w-[400px] rounded-[4px] bg-white px-10 py-8 shadow-overlay">
+        <div className="mb-6 flex flex-col items-center">
+          <div className="flex items-center gap-2">
+            <span className="flex h-8 w-8 items-center justify-center rounded-[4px] bg-ourcloud-600 text-white">
+              <Cloud className="h-5 w-5" strokeWidth={2.5} />
+            </span>
+            <span className="text-2xl font-semibold text-slate-600">HYOZA</span>
           </div>
-          <h1 className="text-xl font-semibold text-slate-900">HYOZA System</h1>
-          <p className="mt-1 text-sm text-slate-500">Sign in to the agent console</p>
+          <h1 className="mt-6 text-base font-semibold text-slate-900">Log in to continue</h1>
         </div>
 
         <form action={formAction} className="space-y-4">
@@ -28,7 +30,8 @@ export default function LoginPage() {
               name="email"
               type="text"
               autoComplete="username"
-              placeholder="agent@ourcloud.local"
+              placeholder="Enter your email"
+              className="h-10"
               required
             />
           </div>
@@ -39,29 +42,34 @@ export default function LoginPage() {
               name="password"
               type="password"
               autoComplete="current-password"
+              placeholder="Enter password"
+              className="h-10"
               required
             />
           </div>
 
-          {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
+          {state?.error && (
+            <p className="rounded-[3px] bg-[#ffecec] px-3 py-2 text-sm text-[#ae2e24]">{state.error}</p>
+          )}
 
-          <Button type="submit" className="w-full" disabled={pending}>
-            {pending ? "Signing in..." : "Sign in"}
+          <Button type="submit" size="lg" className="w-full" disabled={pending}>
+            {pending ? "Logging in…" : "Continue"}
           </Button>
         </form>
 
-        <div className="mt-6 rounded-lg bg-slate-50 p-3 text-xs text-slate-500">
-          <p className="font-medium text-slate-700">Demo accounts</p>
-          <p>agent@ourcloud.local / agent123</p>
+        <div className="mt-6 rounded-[3px] bg-slate-100 p-3 text-xs text-slate-600">
+          <p className="font-semibold text-slate-900">Demo accounts</p>
+          <p className="mt-1">agent@ourcloud.local / agent123</p>
           <p>admin@ourcloud.local / admin123</p>
-          <p className="mt-2">
-            Customer?{" "}
-            <a href="/portal/login" className="font-medium text-ourcloud-700 hover:underline">
-              Sign in to the support portal
-            </a>
-          </p>
+        </div>
+
+        <div className="mt-6 border-t border-slate-200 pt-4 text-center text-sm">
+          <a href="/support" className="text-ourcloud-700 hover:underline">
+            Customer? Go to the support portal
+          </a>
         </div>
       </div>
+      <p className="mt-6 text-xs text-slate-500">HYOZA System · IT service management</p>
     </div>
   );
 }

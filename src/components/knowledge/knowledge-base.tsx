@@ -4,7 +4,9 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { BookOpen, Plus } from "lucide-react";
+import { Input, Textarea } from "@/components/ui/input";
+import { PageHeader } from "@/components/ui/page-header";
+import { BookOpen, Plus, Search } from "lucide-react";
 
 interface Article {
   id: string;
@@ -53,32 +55,32 @@ export function KnowledgeBaseClient() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Knowledge Base</h1>
-          <p className="text-sm text-slate-500">Articles and guides for agents and customers</p>
-        </div>
-        <Button onClick={() => setShowCreate(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          New Article
-        </Button>
-      </div>
+      <PageHeader
+        title="Knowledge base"
+        description="Articles and guides for agents and customers."
+        actions={
+          <Button onClick={() => setShowCreate(true)}>
+            <Plus className="mr-1.5 h-4 w-4" />
+            Create article
+          </Button>
+        }
+      />
 
-      <div className="flex gap-2">
-        <input
+      <div className="relative max-w-md">
+        <Search className="pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+        <Input
           type="search"
-          placeholder="Search articles..."
+          placeholder="Search articles"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && load(search)}
-          className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm"
+          className="h-8 pl-8"
         />
-        <Button variant="secondary" onClick={() => load(search)}>Search</Button>
       </div>
 
-      <div className="grid gap-4">
+      <div className="divide-y divide-slate-200 border-y border-slate-200">
         {articles.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-slate-200 p-12 text-center text-slate-500">
+          <div className="p-12 text-center text-slate-500">
             <BookOpen className="mx-auto h-10 w-10 text-slate-300" />
             <p className="mt-2">No articles yet. Create your first knowledge base article.</p>
           </div>
@@ -87,37 +89,36 @@ export function KnowledgeBaseClient() {
             <Link
               key={article.id}
               href={`/app/knowledge/${article.slug}`}
-              className="block rounded-xl border border-slate-200 bg-white p-4 hover:border-ourcloud-200 hover:shadow-sm transition-all"
+              className="flex items-center gap-3 px-2 py-3 hover:bg-slate-100"
             >
-              <div className="flex items-start justify-between">
-                <div>
-                  <h3 className="font-medium text-slate-900">{article.title}</h3>
-                  <p className="mt-1 text-sm text-slate-500">
-                    {article.author.name}
-                    {article.category && ` · ${article.category.name}`}
-                  </p>
-                </div>
-                <Badge color={article.status === "published" ? "#22c55e" : "#6b7280"}>
-                  {article.status}
-                </Badge>
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[4px] bg-ourcloud-50 text-ourcloud-700">
+                <BookOpen className="h-4 w-4" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <h3 className="truncate text-sm font-medium text-slate-900">{article.title}</h3>
+                <p className="text-xs text-slate-500">
+                  {article.author.name}
+                  {article.category && ` · ${article.category.name}`}
+                </p>
               </div>
+              <Badge color={article.status === "published" ? "#22c55e" : "#6b7280"}>{article.status}</Badge>
             </Link>
           ))
         )}
       </div>
 
       {showCreate && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-lg">
-            <h3 className="font-semibold text-slate-900">New Article</h3>
-            <input
-              className="mt-4 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#091e427d]">
+          <div className="w-full max-w-lg rounded-[4px] bg-white p-6 shadow-overlay">
+            <h3 className="text-xl font-medium text-slate-900">Create article</h3>
+            <Input
+              className="mt-4"
               placeholder="Title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
             />
-            <textarea
-              className="mt-3 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+            <Textarea
+              className="mt-3"
               rows={8}
               placeholder="Article content..."
               value={body}

@@ -77,41 +77,41 @@ export function UserAdminPanel() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Users & Roles</h1>
+        <h2 className="text-base font-semibold text-slate-900">Users & roles</h2>
         <p className="text-sm text-slate-500">Assign agent, administrator, manager, and other roles</p>
       </div>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+      <div className="overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="border-b border-slate-200 bg-slate-50">
+          <thead className="border-b-2 border-slate-200">
             <tr>
-              <th className="px-4 py-3 text-left font-medium text-slate-600">Name</th>
-              <th className="px-4 py-3 text-left font-medium text-slate-600">Email</th>
-              <th className="px-4 py-3 text-left font-medium text-slate-600">Roles</th>
-              <th className="px-4 py-3 text-left font-medium text-slate-600">Status</th>
-              <th className="px-4 py-3 text-left font-medium text-slate-600">Actions</th>
+              <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500">Name</th>
+              <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500">Email</th>
+              <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500">Roles</th>
+              <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500">Status</th>
+              <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-slate-200">
             {users.map((user) => (
               <tr key={user.id}>
-                <td className="px-4 py-3 font-medium">{user.name}</td>
-                <td className="px-4 py-3 text-slate-600">{user.email}</td>
-                <td className="px-4 py-3">
+                <td className="px-3 py-2.5 font-medium">{user.name}</td>
+                <td className="px-3 py-2.5 text-slate-600">{user.email}</td>
+                <td className="px-3 py-2.5">
                   <div className="flex flex-wrap gap-1">
                     {user.userRoles.map((ur) => (
                       <Badge key={ur.role.id} color="#6366f1">{ur.role.name}</Badge>
                     ))}
                   </div>
                 </td>
-                <td className="px-4 py-3">
+                <td className="px-3 py-2.5">
                   <Badge color={user.isActive ? "#22c55e" : "#6b7280"}>
                     {user.isActive ? "Active" : "Inactive"}
                   </Badge>
                 </td>
-                <td className="px-4 py-3">
+                <td className="px-3 py-2.5">
                   <div className="flex gap-2">
                     <Button variant="secondary" size="sm" onClick={() => startEdit(user)}>Edit Roles</Button>
                     <Button variant="ghost" size="sm" onClick={() => toggleActive(user)}>
@@ -126,7 +126,7 @@ export function UserAdminPanel() {
       </div>
 
       {editing && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#091e427d]">
           <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-lg">
             <h3 className="font-semibold text-slate-900">Edit roles — {editing.name}</h3>
             <p className="mt-1 text-sm text-slate-500">{editing.email}</p>

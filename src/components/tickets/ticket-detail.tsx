@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Textarea, Select } from "@/components/ui/input";
 import { SoftBadge } from "@/components/ui/badge";
+import { Avatar, PriorityIcon, PriorityLabel, TypeIcon } from "@/components/ui/jira";
 import { SearchSelect } from "@/components/ui/search-select";
 import { MentionTextarea } from "@/components/ui/mention-textarea";
 import { TicketWorkTimer } from "@/components/tickets/ticket-work-timer";
@@ -12,7 +13,7 @@ import { formatDate } from "@/lib/utils";
 import { getActivityLabel } from "@/lib/activity-labels";
 import { mentionHandle, resolveMentionedUserIds, stripMentionFromBody } from "@/lib/mentions";
 import Link from "next/link";
-import { Paperclip, MessageSquare, Lock, Clock, UserPlus, X } from "lucide-react";
+import { Paperclip, MessageSquare, Lock, Clock, UserPlus, X, ChevronDown } from "lucide-react";
 
 interface TicketData {
   id: string;
@@ -345,107 +346,119 @@ export function TicketDetailClient({
   });
 
   return (
-    <div className="-m-6 min-h-full bg-[#f1f5f9] p-6">
-      <nav className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white px-6 py-3.5 text-xs">
-        <Link href="/app/tickets" className="font-medium text-ourcloud-700 hover:underline">
-          Tickets
+    <div className="min-h-full">
+      <nav className="flex flex-wrap items-center gap-2 text-sm text-slate-500">
+        <Link href="/app/dashboard" className="hover:underline">
+          Projects
         </Link>
-        <span className="text-slate-400">/</span>
-        <Link href="/app/board" className="font-medium text-ourcloud-700 hover:underline">
-          Board
+        <span>/</span>
+        <Link href="/app/tickets" className="hover:underline">
+          HYOZA Service Desk
         </Link>
-        <span className="text-slate-400">/</span>
-        <span className="font-semibold text-slate-900">{ticket.ticketNumber}</span>
+        <span>/</span>
+        <span className="inline-flex items-center gap-1.5">
+          <TypeIcon name={ticket.ticketType.name} />
+          <Link href={`/app/tickets/${ticket.id}`} className="hover:underline">
+            {ticket.ticketNumber}
+          </Link>
+        </span>
       </nav>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="space-y-3.5 lg:col-span-2">
-          <div className="rounded-xl border border-slate-200 bg-white p-4">
-            <div className="flex flex-wrap items-center gap-2">
-              <SoftBadge
-                color={ticket.ticketType.name === "Incident" ? "#ef4444" : "#3b82f6"}
-              >
-                {ticket.ticketType.name}
-              </SoftBadge>
-              <span className="font-mono text-xs font-medium text-ourcloud-700">
-                {ticket.ticketNumber}
-              </span>
-            </div>
-            <h1 className="mt-3 text-2xl font-semibold text-slate-900">{ticket.subject}</h1>
+      <div className="mt-3 grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="min-w-0 space-y-6">
+          <div>
+            <h1 className="text-2xl font-medium text-slate-900">{ticket.subject}</h1>
 
-            <div className="mt-3 flex flex-wrap gap-2">
+            <div className="mt-4 flex flex-wrap gap-1.5">
               <Button
-                variant="reply"
-                size="sm"
+                variant="secondary"
                 onClick={() => {
                   setComposeMode(composeMode === "reply" ? null : "reply");
                   setReplyError("");
                 }}
               >
-                <MessageSquare className="mr-1.5 h-3.5 w-3.5" />
-                Reply
-              </Button>
-              <Button
-                variant="internal"
-                size="sm"
-                onClick={() => setComposeMode(composeMode === "note" ? null : "note")}
-              >
-                <Lock className="mr-1.5 h-3.5 w-3.5" />
-                Internal note
+                <MessageSquare className="mr-1.5 h-4 w-4" />
+                Reply to customer
               </Button>
               <Button
                 variant="secondary"
-                size="sm"
+                onClick={() => setComposeMode(composeMode === "note" ? null : "note")}
+              >
+                <Lock className="mr-1.5 h-4 w-4" />
+                Add internal note
+              </Button>
+              <Button
+                variant="secondary"
                 onClick={() => {
                   setComposeMode(composeMode === "escalate" ? null : "escalate");
                   setWatcherError("");
                 }}
               >
-                <UserPlus className="mr-1.5 h-3.5 w-3.5" />
+                <UserPlus className="mr-1.5 h-4 w-4" />
                 Escalation review
                 {watchers.length > 0 && (
-                  <span className="ml-1.5 rounded-full bg-slate-200 px-1.5 text-[10px] text-slate-700">
+                  <span className="ml-1.5 rounded-full bg-slate-200 px-1.5 text-[11px] font-semibold text-slate-700">
                     {watchers.length}
                   </span>
                 )}
               </Button>
               <Button
                 variant="secondary"
-                size="sm"
                 onClick={() => {
                   setComposeMode(composeMode === "time" ? null : "time");
                   setTimeError("");
                 }}
               >
-                <Clock className="mr-1.5 h-3.5 w-3.5" />
+                <Clock className="mr-1.5 h-4 w-4" />
                 Log time
               </Button>
-              <label className="inline-flex cursor-pointer items-center rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50">
-                <Paperclip className="mr-1.5 h-3.5 w-3.5" />
+              <label className="inline-flex h-8 cursor-pointer items-center rounded-[3px] bg-[#091e420f] px-3 text-sm font-medium text-slate-600 hover:bg-[#091e4224]">
+                <Paperclip className="mr-1.5 h-4 w-4" />
                 Attach
                 <input type="file" className="hidden" onChange={handleFileUpload} />
               </label>
             </div>
 
-            <div className="mt-4">
-              <h2 className="text-xs font-semibold text-slate-500">Description</h2>
-              <p className="mt-1.5 whitespace-pre-wrap text-[13px] text-slate-900">
+            <div className="mt-6">
+              <h2 className="text-base font-semibold text-slate-900">Description</h2>
+              <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-900">
                 {ticket.description}
               </p>
               {ticket.resolutionSummary && (
                 <>
-                  <h2 className="mt-4 text-xs font-semibold text-slate-500">Resolution</h2>
-                  <p className="mt-1.5 whitespace-pre-wrap text-[13px] text-slate-900">
+                  <h2 className="mt-6 text-base font-semibold text-slate-900">Resolution</h2>
+                  <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-900">
                     {ticket.resolutionSummary}
                   </p>
                 </>
               )}
             </div>
+
+            {ticket.attachments.length > 0 && (
+              <div className="mt-6">
+                <h2 className="text-base font-semibold text-slate-900">
+                  Attachments <span className="font-normal text-slate-500">{ticket.attachments.length}</span>
+                </h2>
+                <ul className="mt-2 flex flex-wrap gap-2">
+                  {ticket.attachments.map((a) => (
+                    <li key={a.id}>
+                      <a
+                        href={`/api/v1/tickets/${ticket.id}/attachments/${a.id}`}
+                        className="inline-flex items-center gap-2 rounded-[3px] border border-slate-200 px-3 py-2 text-sm text-slate-900 hover:bg-slate-50"
+                      >
+                        <Paperclip className="h-4 w-4 text-slate-500" />
+                        {a.fileName}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
 
           {composeMode === "reply" && (
-            <div className="rounded-lg border-2 border-blue-200 bg-blue-50 p-4">
-              <p className="mb-2 text-xs font-medium text-blue-700">Reply to Customer</p>
+            <div className="rounded-[4px] border border-slate-200 bg-white p-4 shadow-card">
+              <p className="mb-2 text-sm font-semibold text-slate-900">Reply to customer</p>
               <div className="mb-3 flex flex-wrap gap-4 text-sm">
                 <label className="flex items-center gap-2">
                   <input
@@ -481,8 +494,8 @@ export function TicketDetailClient({
               <Textarea value={replyBody} onChange={(e) => setReplyBody(e.target.value)} placeholder="Type your reply..." />
               {replyError && <p className="mt-2 text-xs text-red-600">{replyError}</p>}
               <div className="mt-2 flex gap-2">
-                <Button variant="reply" size="sm" onClick={handleReply} disabled={loading}>
-                  {replyAs === "contact" ? `Send as ${ticket.contact?.name}` : "Send Reply"}
+                <Button onClick={handleReply} disabled={loading}>
+                  {replyAs === "contact" ? `Send as ${ticket.contact?.name}` : "Send reply"}
                 </Button>
                 <Button variant="ghost" size="sm" onClick={() => { setComposeMode(null); setReplyError(""); }}>Cancel</Button>
               </div>
@@ -490,8 +503,8 @@ export function TicketDetailClient({
           )}
 
           {composeMode === "note" && (
-            <div className="rounded-lg border-2 border-amber-200 bg-amber-50 p-4">
-              <p className="mb-2 text-xs font-medium text-amber-700">Internal Note</p>
+            <div className="rounded-[4px] border border-[#f5cd47] bg-[#fff7d6] p-4">
+              <p className="mb-2 text-sm font-semibold text-[#7f5f01]">Internal note · not visible to customer</p>
               <MentionTextarea
                 value={noteBody}
                 onChange={setNoteBody}
@@ -526,15 +539,15 @@ export function TicketDetailClient({
                 </div>
               )}
               <div className="mt-2 flex gap-2">
-                <Button variant="internal" size="sm" onClick={handleInternalNote} disabled={loading}>Add Note</Button>
+                <Button variant="internal" onClick={handleInternalNote} disabled={loading}>Save note</Button>
                 <Button variant="ghost" size="sm" onClick={() => { setComposeMode(null); setTaggedAgentIds([]); setNoteBody(""); }}>Cancel</Button>
               </div>
             </div>
           )}
 
           {composeMode === "escalate" && (
-            <div className="rounded-lg border-2 border-slate-300 bg-slate-50 p-4">
-              <p className="mb-1 text-xs font-medium text-slate-700">Escalation review</p>
+            <div className="rounded-[4px] border border-slate-200 bg-slate-50 p-4">
+              <p className="mb-1 text-sm font-semibold text-slate-900">Escalation review</p>
               <p className="mb-3 text-xs text-slate-500">
                 Write a comment and @mention staff to check this ticket
                 {slaAtRisk ? " (SLA due soon)." : "."} They get the note by email and stay listed as reviewers.
@@ -625,8 +638,8 @@ export function TicketDetailClient({
           )}
 
           {composeMode === "time" && (
-            <div className="rounded-lg border-2 border-slate-300 bg-slate-50 p-4">
-              <p className="mb-2 text-xs font-medium text-slate-700">Log time</p>
+            <div className="rounded-[4px] border border-slate-200 bg-slate-50 p-4">
+              <p className="mb-2 text-sm font-semibold text-slate-900">Log time</p>
               <p className="mb-3 text-xs text-slate-500">Notes are required for every time entry.</p>
               <div className="mb-3 flex flex-wrap items-center gap-2">
                 <label className="text-sm text-slate-600">
@@ -683,26 +696,25 @@ export function TicketDetailClient({
             </div>
           )}
 
-          <div className="rounded-xl border border-slate-200 bg-white p-4">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <h2 className="text-sm font-semibold text-slate-900">Activity</h2>
-              <div className="flex gap-1">
-                {(["all", "customer", "internal", "system"] as TimelineFilter[]).map((f) => (
-                  <button
-                    key={f}
-                    onClick={() => setTimelineFilter(f)}
-                    className={`rounded-md px-2.5 py-1.5 text-[11px] capitalize transition-colors ${
-                      timelineFilter === f
-                        ? "bg-ourcloud-50 font-semibold text-ourcloud-700"
-                        : "font-medium text-slate-500 hover:bg-slate-50"
-                    }`}
-                  >
-                    {f}
-                  </button>
-                ))}
-              </div>
+          <div>
+            <h2 className="text-base font-semibold text-slate-900">Activity</h2>
+            <div className="mt-2 flex items-center gap-1 text-sm">
+              <span className="mr-1 text-slate-500">Show:</span>
+              {(["all", "customer", "internal", "system"] as TimelineFilter[]).map((f) => (
+                <button
+                  key={f}
+                  onClick={() => setTimelineFilter(f)}
+                  className={`h-7 rounded-[3px] px-2 font-medium capitalize transition-colors ${
+                    timelineFilter === f
+                      ? "bg-ourcloud-50 text-ourcloud-700"
+                      : "bg-[#091e420f] text-slate-600 hover:bg-[#091e4224]"
+                  }`}
+                >
+                  {f === "customer" ? "Comments" : f === "system" ? "History" : f}
+                </button>
+              ))}
             </div>
-            <div className="mt-3 space-y-3">
+            <div className="mt-4 space-y-5">
               {filteredTimeline.length === 0 && (
                 <p className="text-sm text-slate-500">No activity yet.</p>
               )}
@@ -712,55 +724,63 @@ export function TicketDetailClient({
                     ? item.data.onBehalfOfContact.name
                     : item.data.author.name;
                   return (
-                    <div
-                      key={`c-${item.data.id}`}
-                      className="rounded-[10px] bg-blue-50 p-3"
-                    >
-                      <div className="flex flex-wrap items-center gap-2 text-[11px]">
-                        <span className="font-semibold text-blue-700">{displayName}</span>
-                        {item.data.onBehalfOfContact && (
-                          <span className="text-blue-500">(via agent)</span>
-                        )}
-                        <span className="text-slate-500">{formatDate(item.data.createdAt)}</span>
+                    <div key={`c-${item.data.id}`} className="flex gap-3">
+                      <Avatar name={displayName} size={32} />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2 text-sm">
+                          <span className="font-semibold text-slate-900">{displayName}</span>
+                          {item.data.onBehalfOfContact && (
+                            <span className="text-slate-500">(via agent)</span>
+                          )}
+                          <span className="text-slate-500">{formatDate(item.data.createdAt)}</span>
+                        </div>
+                        <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-slate-900">
+                          {item.data.body}
+                        </p>
                       </div>
-                      <p className="mt-1.5 whitespace-pre-wrap text-[13px] text-slate-900">
-                        {item.data.body}
-                      </p>
                     </div>
                   );
                 }
                 if (item.type === "note") {
                   return (
-                    <div
-                      key={`n-${item.data.id}`}
-                      className="rounded-[10px] bg-amber-50 p-3"
-                    >
-                      <div className="flex flex-wrap items-center gap-2 text-[11px]">
-                        <span className="font-semibold text-amber-700">
-                          {item.data.author.name} · internal
-                        </span>
-                        <span className="text-slate-500">{formatDate(item.data.createdAt)}</span>
+                    <div key={`n-${item.data.id}`} className="flex gap-3">
+                      <Avatar name={item.data.author.name} size={32} />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2 text-sm">
+                          <span className="font-semibold text-slate-900">{item.data.author.name}</span>
+                          <span className="text-slate-500">{formatDate(item.data.createdAt)}</span>
+                          <span className="rounded-[3px] bg-[#f8e6a0] px-1 text-[11px] font-bold uppercase leading-4 text-[#7f5f01]">
+                            Internal note
+                          </span>
+                        </div>
+                        <div className="mt-1.5 rounded-[3px] bg-[#fff7d6] px-3 py-2">
+                          <p className="whitespace-pre-wrap text-sm leading-6 text-slate-900">
+                            {item.data.body}
+                          </p>
+                          {item.data.taggedUsers.length > 0 && (
+                            <p className="mt-1 text-xs text-[#7f5f01]">
+                              <span className="font-semibold">Mentioned:</span>{" "}
+                              {item.data.taggedUsers
+                                .map((u) => `@${mentionHandle(u, item.data.taggedUsers)}`)
+                                .join(", ")}
+                            </p>
+                          )}
+                        </div>
                       </div>
-                      <p className="mt-1.5 whitespace-pre-wrap text-[13px] text-slate-900">
-                        {item.data.body}
-                      </p>
-                      {item.data.taggedUsers.length > 0 && (
-                        <p className="mt-2 text-[11px] text-amber-800">
-                          <span className="font-medium">Mentioned:</span>{" "}
-                          {item.data.taggedUsers
-                            .map((u) => `@${mentionHandle(u, item.data.taggedUsers)}`)
-                            .join(", ")}
-                        </p>
-                      )}
                     </div>
                   );
                 }
                 const payload = JSON.parse(item.data.payload || "{}");
                 return (
-                  <div key={`a-${item.data.id}`} className="rounded-[10px] bg-slate-50 px-3 py-2 text-xs text-slate-500">
-                    {getActivityLabel(item.data.eventType, payload)}
-                    {item.data.actor && ` — ${item.data.actor.name}`}
-                    <span className="ml-2">{formatDate(item.data.createdAt)}</span>
+                  <div key={`a-${item.data.id}`} className="flex items-center gap-3 text-sm">
+                    <Avatar name={item.data.actor?.name ?? "System"} size={32} />
+                    <p className="min-w-0 text-slate-600">
+                      {item.data.actor && (
+                        <span className="font-semibold text-slate-900">{item.data.actor.name} </span>
+                      )}
+                      {getActivityLabel(item.data.eventType, payload)}
+                      <span className="ml-2 text-slate-500">{formatDate(item.data.createdAt)}</span>
+                    </p>
                   </div>
                 );
               })}
@@ -768,47 +788,82 @@ export function TicketDetailClient({
           </div>
         </div>
 
-        <div className="space-y-3.5">
-          <div className="rounded-xl border border-slate-200 bg-white p-4">
-            <h2 className="text-[13px] font-semibold text-slate-900">Details</h2>
-            <dl className="mt-1 divide-y divide-slate-100 text-sm">
-              <DetailRow label="Status" stacked>
-                <Select
-                  value=""
-                  onChange={(e) => {
-                    const transition = transitions.find((t) => t.id === e.target.value);
-                    if (transition) void handleTransition(transition);
-                  }}
-                  disabled={loading || transitions.length === 0}
-                  className="rounded-lg text-xs"
-                >
-                  <option value="">
-                    {ticket.status.name}
-                    {transitions.length === 0 ? "" : " — change…"}
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative">
+              <select
+                value=""
+                onChange={(e) => {
+                  const transition = transitions.find((t) => t.id === e.target.value);
+                  if (transition) void handleTransition(transition);
+                }}
+                disabled={loading || transitions.length === 0}
+                aria-label="Change status"
+                className={`h-8 cursor-pointer appearance-none rounded-[3px] pl-3 pr-8 text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-ourcloud-400 disabled:cursor-default ${
+                  ["resolved", "closed"].includes(ticket.status.category ?? "")
+                    ? "bg-[#1f845a] text-white hover:bg-[#216e4e]"
+                    : ticket.status.code === "open"
+                      ? "bg-[#091e420f] text-slate-600 hover:bg-[#091e4224]"
+                      : "bg-ourcloud-600 text-white hover:bg-ourcloud-700"
+                }`}
+              >
+                <option value="">{ticket.status.name}</option>
+                {transitions.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                    {t.toStatus?.name ? ` → ${t.toStatus.name}` : ""}
                   </option>
-                  {transitions.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name}
-                      {t.toStatus?.name ? ` → ${t.toStatus.name}` : ""}
-                    </option>
-                  ))}
-                </Select>
+                ))}
+              </select>
+              <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 opacity-80" />
+            </div>
+            {slaAtRisk && (
+              <span className="rounded-[3px] bg-[#ffd5d2] px-1 text-[11px] font-bold uppercase leading-4 text-[#ae2e24]">
+                SLA at risk
+              </span>
+            )}
+          </div>
+
+          <div className="rounded-[4px] border border-slate-200">
+            <h2 className="border-b border-slate-200 px-4 py-3 text-sm font-semibold text-slate-900">Details</h2>
+            <dl className="space-y-1 px-4 py-3 text-sm">
+              <DetailRow label="Assignee">
+                <SearchSelect
+                  options={metadata.technicians.map((technician) => ({
+                    id: technician.id,
+                    label: technician.name,
+                    hint: technician.email,
+                  }))}
+                  value={ticket.assignee?.id ?? null}
+                  onChange={(assigneeId) => updateTicketDetails({ assigneeId })}
+                  placeholder="Unassigned"
+                  disabled={detailsSaving}
+                />
               </DetailRow>
+              <DetailRow label="Customer">{ticket.organisation.name}</DetailRow>
+              {ticket.contact && (
+                <DetailRow label="Reporter">
+                  <span className="inline-flex items-center gap-2">
+                    <Avatar name={ticket.contact.name} size={24} />
+                    {ticket.contact.name}
+                  </span>
+                </DetailRow>
+              )}
               <DetailRow label="Priority">
-                <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-900">
-                  <span
-                    className="inline-block h-2 w-2 rounded-full"
-                    style={{ backgroundColor: ticket.priority.color }}
-                  />
-                  {ticket.priority.name}
+                <PriorityLabel name={ticket.priority.name} />
+              </DetailRow>
+              <DetailRow label="Request type">
+                <span className="inline-flex items-center gap-2">
+                  <TypeIcon name={ticket.ticketType.name} />
+                  {ticket.ticketType.name}
                 </span>
               </DetailRow>
-              <DetailRow label="Category" stacked>
+              <DetailRow label="Category">
                 <Select
                   value={ticket.category?.id ?? ""}
                   onChange={(e) => updateTicketDetails({ categoryId: e.target.value || null })}
                   disabled={detailsSaving}
-                  className="rounded-lg text-xs"
+                  className="h-8 py-1"
                 >
                   <option value="">Select category...</option>
                   {metadata.routingCategories.map((category) => (
@@ -818,36 +873,22 @@ export function TicketDetailClient({
                   ))}
                 </Select>
               </DetailRow>
-              <DetailRow label="Assignee" stacked>
-                <SearchSelect
-                  options={metadata.technicians.map((technician) => ({
-                    id: technician.id,
-                    label: technician.name,
-                    hint: technician.email,
-                  }))}
-                  value={ticket.assignee?.id ?? null}
-                  onChange={(assigneeId) => updateTicketDetails({ assigneeId })}
-                  placeholder="Search technicians..."
-                  disabled={detailsSaving}
-                />
-              </DetailRow>
-              <DetailRow label="Customer">{ticket.organisation.name}</DetailRow>
-              {ticket.contact && <DetailRow label="Contact">{ticket.contact.name}</DetailRow>}
               <DetailRow label="Team">
                 {ticket.team?.name ?? (
-                  <span className="text-slate-400">Set a category to assign a team</span>
+                  <span className="text-slate-500">None — set a category</span>
                 )}
               </DetailRow>
-              <DetailRow label="Type">{ticket.ticketType.name}</DetailRow>
               {ticket.resolutionDueAt && (
-                <DetailRow label="SLA due">
-                  <span className="text-amber-500">{formatDate(ticket.resolutionDueAt)}</span>
+                <DetailRow label="Time to resolution">
+                  <span className={slaAtRisk ? "font-medium text-[#c9372c]" : ""}>
+                    {formatDate(ticket.resolutionDueAt)}
+                  </span>
                 </DetailRow>
               )}
               {ticket.asset && <DetailRow label="Asset">{ticket.asset.assetTag}</DetailRow>}
             </dl>
             {detailsError && (
-              <p className="mt-2 text-xs text-red-600">{detailsError}</p>
+              <p className="px-4 pb-3 text-xs text-[#c9372c]">{detailsError}</p>
             )}
           </div>
 
@@ -861,23 +902,21 @@ export function TicketDetailClient({
           )}
 
           {relatedTickets.length > 0 && ticket.contact && (
-            <div className="rounded-xl border border-slate-200 bg-white p-4">
-              <h2 className="mb-2 text-[13px] font-semibold text-slate-900">
+            <div className="rounded-[4px] border border-slate-200">
+              <h2 className="border-b border-slate-200 px-4 py-3 text-sm font-semibold text-slate-900">
                 Other tickets from {ticket.contact.name}
               </h2>
-              <ul className="divide-y divide-slate-100">
+              <ul className="py-1">
                 {relatedTickets.map((t) => (
                   <li key={t.id}>
                     <Link
                       href={`/app/tickets/${t.id}`}
-                      className="-mx-2 block rounded px-2 py-2 hover:bg-slate-50"
+                      className="flex items-center gap-2 px-4 py-2 hover:bg-slate-100"
                     >
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-mono text-xs text-slate-400">{t.ticketNumber}</span>
-                        <SoftBadge color={t.status.color}>{t.status.name}</SoftBadge>
-                      </div>
-                      <p className="mt-0.5 text-sm font-medium text-slate-900">{t.subject}</p>
-                      <p className="text-xs text-slate-400">{formatDate(t.updatedAt)}</p>
+                      <PriorityIcon name={t.priority.name} />
+                      <span className="shrink-0 text-sm text-slate-600">{t.ticketNumber}</span>
+                      <span className="min-w-0 flex-1 truncate text-sm text-slate-900">{t.subject}</span>
+                      <SoftBadge color={t.status.color}>{t.status.name}</SoftBadge>
                     </Link>
                   </li>
                 ))}
@@ -886,48 +925,34 @@ export function TicketDetailClient({
           )}
 
           {ticket.timeEntries && ticket.timeEntries.length > 0 && (
-            <div className="rounded-xl border border-slate-200 bg-white p-4">
-              <h2 className="text-[13px] font-semibold text-slate-900">Time</h2>
-              <p className="mt-2 text-[28px] font-semibold leading-none text-ourcloud-700">
-                {ticket.timeEntries.reduce((s, e) => s + e.durationMinutes, 0)}m
-              </p>
-              <ul className="mt-3 max-h-40 space-y-2 overflow-y-auto text-xs text-slate-600">
+            <div className="rounded-[4px] border border-slate-200">
+              <h2 className="flex items-baseline justify-between border-b border-slate-200 px-4 py-3 text-sm font-semibold text-slate-900">
+                Time tracking
+                <span className="text-sm font-normal text-slate-600">
+                  {ticket.timeEntries.reduce((s, e) => s + e.durationMinutes, 0)}m logged
+                </span>
+              </h2>
+              <ul className="max-h-48 space-y-2 overflow-y-auto px-4 py-3 text-sm text-slate-600">
                 {ticket.timeEntries.slice(0, 8).map((e) => (
-                  <li key={e.id} className="border-t border-slate-100 pt-2">
-                    <span className="font-medium text-slate-800">{e.durationMinutes}m</span>
-                    {" · "}
-                    {e.user.name}
-                    {e.notes && <p className="mt-0.5 line-clamp-2 text-slate-500">{e.notes}</p>}
+                  <li key={e.id} className="flex gap-2">
+                    <Avatar name={e.user.name} size={20} />
+                    <div className="min-w-0">
+                      <span className="font-medium text-slate-900">{e.durationMinutes}m</span>
+                      {" · "}
+                      {e.user.name}
+                      {e.notes && <p className="line-clamp-2 text-xs text-slate-500">{e.notes}</p>}
+                    </div>
                   </li>
                 ))}
               </ul>
             </div>
-          )}
-
-          {ticket.attachments.length > 0 && (
-            <div className="rounded-xl border border-slate-200 bg-white p-4">
-              <h2 className="mb-2 text-[13px] font-semibold text-slate-900">Attachments</h2>
-              <ul className="space-y-1 text-sm">
-                {ticket.attachments.map((a) => (
-                  <li key={a.id}>
-                    <a
-                      href={`/api/v1/tickets/${ticket.id}/attachments/${a.id}`}
-                      className="text-ourcloud-600 hover:underline"
-                    >
-                      {a.fileName}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
+          )}        </div>
       </div>
 
       {resolveModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-lg">
-            <h3 className="font-semibold text-slate-900">Resolve Ticket</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#091e427d]">
+          <div className="w-full max-w-md rounded-[4px] bg-white p-6 shadow-overlay">
+            <h3 className="text-xl font-medium text-slate-900">Resolve ticket</h3>
             <p className="mt-1 text-sm text-slate-500">Please provide a resolution summary.</p>
             <Textarea
               className="mt-4"
@@ -950,28 +975,12 @@ export function TicketDetailClient({
   );
 }
 
-function DetailRow({
-  label,
-  children,
-  stacked = false,
-}: {
-  label: string;
-  children: React.ReactNode;
-  stacked?: boolean;
-}) {
-  if (stacked) {
-    return (
-      <div className="space-y-1.5 py-2">
-        <dt className="text-[11px] font-medium text-slate-500">{label}</dt>
-        <dd className="text-xs font-medium text-slate-900">{children}</dd>
-      </div>
-    );
-  }
-
+/** Jira field row: label on the left, value on the right. */
+function DetailRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex justify-between gap-4 py-2">
-      <dt className="shrink-0 text-[11px] font-medium text-slate-500">{label}</dt>
-      <dd className="text-right text-xs font-medium text-slate-900">{children}</dd>
+    <div className="grid grid-cols-[120px_minmax(0,1fr)] items-center gap-3 py-1.5">
+      <dt className="text-sm font-semibold text-slate-600">{label}</dt>
+      <dd className="min-w-0 text-sm text-slate-900">{children}</dd>
     </div>
   );
 }

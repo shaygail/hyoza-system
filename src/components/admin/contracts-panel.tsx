@@ -107,7 +107,7 @@ export function ContractsPanel() {
         <h3 className="text-sm font-medium text-slate-700">New contract</h3>
         <div className="grid gap-2 md:grid-cols-3">
           <select
-            className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
+            className="rounded-[3px] border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 placeholder:text-slate-400 hover:bg-slate-50 focus:border-ourcloud-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-ourcloud-400"
             value={form.organisationId}
             onChange={(e) => setForm({ ...form, organisationId: e.target.value })}
           >
@@ -117,13 +117,13 @@ export function ContractsPanel() {
             ))}
           </select>
           <input
-            className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
+            className="rounded-[3px] border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 placeholder:text-slate-400 hover:bg-slate-50 focus:border-ourcloud-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-ourcloud-400"
             placeholder="Contract name"
             value={form.name}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
           />
           <select
-            className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
+            className="rounded-[3px] border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 placeholder:text-slate-400 hover:bg-slate-50 focus:border-ourcloud-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-ourcloud-400"
             value={form.contractType}
             onChange={(e) => setForm({ ...form, contractType: e.target.value })}
           >
@@ -132,19 +132,19 @@ export function ContractsPanel() {
             <option value="tm">Time & materials</option>
           </select>
           <input
-            className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
+            className="rounded-[3px] border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 placeholder:text-slate-400 hover:bg-slate-50 focus:border-ourcloud-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-ourcloud-400"
             placeholder="Monthly minutes"
             value={form.monthlyMinutes}
             onChange={(e) => setForm({ ...form, monthlyMinutes: e.target.value })}
           />
           <input
-            className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
+            className="rounded-[3px] border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 placeholder:text-slate-400 hover:bg-slate-50 focus:border-ourcloud-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-ourcloud-400"
             placeholder="Retainer amount"
             value={form.retainerAmount}
             onChange={(e) => setForm({ ...form, retainerAmount: e.target.value })}
           />
           <input
-            className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
+            className="rounded-[3px] border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 placeholder:text-slate-400 hover:bg-slate-50 focus:border-ourcloud-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-ourcloud-400"
             placeholder="Overage hourly rate"
             value={form.overageHourlyRate}
             onChange={(e) => setForm({ ...form, overageHourlyRate: e.target.value })}
