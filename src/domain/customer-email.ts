@@ -1,4 +1,5 @@
 import { randomBytes } from "crypto";
+import { escapeHtml as e, sendMail } from "@/lib/mailer";
 
 export function getPortalBaseUrl() {
   return (
@@ -20,13 +21,15 @@ export interface CustomerEmailPayload {
 }
 
 export async function sendCustomerEmail(payload: CustomerEmailPayload) {
-  // Dev: log to console. Production: wire SMTP in Phase 2.
-  const prefix = process.env.NODE_ENV === "development" ? "[customer:email]" : "[customer:email]";
-  console.log(`${prefix} To: ${payload.to}`);
-  console.log(`${prefix} Subject: ${payload.subject}`);
-  console.log(`${prefix} Body:\n${payload.text}`);
-  return { sent: true, to: payload.to };
+  return sendMail(payload, "[customer:email]");
 }
+
+/** Subject tag used to thread email replies back onto the ticket, e.g. "[OCSD-1234]". */
+export function ticketSubjectTag(ticketNumber: string) {
+  return `[${ticketNumber}]`;
+}
+
+const REPLY_ABOVE_LINE = "Reply above this line to add to your ticket.";
 
 export async function sendTicketCreatedEmail(params: {
   to: string;
@@ -45,20 +48,20 @@ export async function sendTicketCreatedEmail(params: {
     `Track your ticket and reply here (no sign-in required):`,
     params.accessUrl,
     "",
-    "We'll email you when there are updates.",
+    "We'll email you when there are updates. You can also reply to this email.",
   ].join("\n");
 
   const html = `
-    <p>Hi ${params.name},</p>
-    <p>We've received your support request <strong>${params.ticketNumber}</strong>.</p>
-    <p><strong>Subject:</strong> ${params.subject}</p>
-    <p><a href="${params.accessUrl}">View your ticket and reply</a> — no sign-in required.</p>
+    <p>Hi ${e(params.name)},</p>
+    <p>We've received your support request <strong>${e(params.ticketNumber)}</strong>.</p>
+    <p><strong>Subject:</strong> ${e(params.subject)}</p>
+    <p><a href="${e(params.accessUrl)}">View your ticket and reply</a> — no sign-in required, or just reply to this email.</p>
     <p>We'll email you when there are updates.</p>
   `;
 
   return sendCustomerEmail({
     to: params.to,
-    subject: `Ticket created: ${params.ticketNumber}`,
+    subject: `${ticketSubjectTag(params.ticketNumber)} Ticket created: ${params.subject}`,
     text,
     html,
   });
@@ -73,6 +76,8 @@ export async function sendTicketReplyEmail(params: {
   accessUrl: string;
 }) {
   const text = [
+    REPLY_ABOVE_LINE,
+    "",
     `Hi ${params.name},`,
     "",
     `There's a new reply on your ticket ${params.ticketNumber} (${params.subject}):`,
@@ -84,12 +89,13 @@ export async function sendTicketReplyEmail(params: {
 
   return sendCustomerEmail({
     to: params.to,
-    subject: `New reply on ${params.ticketNumber}`,
+    subject: `${ticketSubjectTag(params.ticketNumber)} New reply: ${params.subject}`,
     text,
-    html: `<p>Hi ${params.name},</p>
-      <p>There's a new reply on <strong>${params.ticketNumber}</strong>:</p>
-      <blockquote>${params.replyPreview}</blockquote>
-      <p><a href="${params.accessUrl}">View your ticket</a></p>`,
+    html: `<p style="color:#888">${REPLY_ABOVE_LINE}</p>
+      <p>Hi ${e(params.name)},</p>
+      <p>There's a new reply on <strong>${e(params.ticketNumber)}</strong>:</p>
+      <blockquote style="white-space:pre-wrap">${e(params.replyPreview)}</blockquote>
+      <p><a href="${e(params.accessUrl)}">View your ticket</a></p>`,
   });
 }
 
@@ -111,11 +117,11 @@ export async function sendTicketStatusEmail(params: {
 
   return sendCustomerEmail({
     to: params.to,
-    subject: `Ticket ${params.ticketNumber} — ${params.statusName}`,
+    subject: `${ticketSubjectTag(params.ticketNumber)} ${params.statusName}: ${params.subject}`,
     text,
-    html: `<p>Hi ${params.name},</p>
-      <p>Your ticket <strong>${params.ticketNumber}</strong> is now: <strong>${params.statusName}</strong>.</p>
-      <p><a href="${params.accessUrl}">View your ticket</a></p>`,
+    html: `<p>Hi ${e(params.name)},</p>
+      <p>Your ticket <strong>${e(params.ticketNumber)}</strong> is now: <strong>${e(params.statusName)}</strong>.</p>
+      <p><a href="${e(params.accessUrl)}">View your ticket</a></p>`,
   });
 }
 

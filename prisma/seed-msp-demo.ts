@@ -396,16 +396,16 @@ export async function seedMspDemo() {
     responseDueAt?: Date;
     resolutionDueAt?: Date;
   }) {
-    const ticketNumber = await nextTicketNumber(tenant.id);
+    const ticketNumber = await nextTicketNumber(tenant!.id);
     return prisma.ticket.create({
       data: {
-        tenantId: tenant.id,
+        tenantId: tenant!.id,
         ticketNumber,
         subject: opts.subject,
         description: opts.description,
         organisationId: opts.orgId,
         contactId: opts.contactId,
-        assigneeId: opts.assigneeId === null ? null : opts.assigneeId ?? agent.id,
+        assigneeId: opts.assigneeId === null ? null : opts.assigneeId ?? agent!.id,
         teamId: team?.id,
         statusId: opts.statusId,
         priorityId: priority[opts.priorityCode ?? "medium"] ?? priorities[0].id,
@@ -547,16 +547,16 @@ export async function seedMspDemo() {
   }) {
     return prisma.timeEntry.create({
       data: {
-        tenantId: tenant.id,
+        tenantId: tenant!.id,
         ticketId: opts.ticketId,
-        userId: opts.userId ?? agent.id,
+        userId: opts.userId ?? agent!.id,
         organisationId: opts.orgId,
         contractId: opts.contractId,
         workTypeId: opts.workTypeId ?? remoteId,
         durationMinutes: opts.minutes,
         isBillable: opts.billable ?? true,
         status: opts.status ?? "approved",
-        approvedById: opts.status === "submitted" ? null : staff.team_leader ?? admin.id,
+        approvedById: opts.status === "submitted" ? null : staff.team_leader ?? admin!.id,
         approvedAt: opts.status === "submitted" ? null : opts.when,
         notes: opts.notes,
         createdAt: opts.when,

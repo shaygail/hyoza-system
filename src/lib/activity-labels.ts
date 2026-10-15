@@ -27,6 +27,10 @@ export function getActivityLabel(eventType: string, payload: Record<string, unkn
       const reason = payload.reason === "escalation" ? " for escalation review" : "";
       return users ? `Tagged for review${reason}: ${users}` : `Tagged staff for review${reason}`;
     }
+    case "guest_access.revoked":
+      return `Revoked ${payload.count ?? 0} customer ticket link(s)`;
+    case "sla.escalated":
+      return "Response SLA escalated";
     case "ticket.watcher_removed":
       return "Removed tagged reviewer";
     case "time_entry.added":

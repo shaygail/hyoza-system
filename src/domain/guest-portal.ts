@@ -10,6 +10,7 @@ import {
   sendTicketStatusEmail,
 } from "@/domain/customer-email";
 import { getDefaultTenant } from "@/domain/portal-public";
+import { guestLinkExpiry, isGuestAccessValid } from "@/domain/guest-link-policy";
 
 async function getSystemUserId(tenantId: string) {
   const admin = await prisma.user.findFirst({
@@ -64,12 +65,39 @@ export async function createGuestAccess(ticketId: string, email: string) {
       ticketId,
       email: email.trim().toLowerCase(),
       token,
+      expiresAt: guestLinkExpiry(),
     },
   });
 }
 
+/**
+ * Return a currently valid link for this ticket + email, issuing a new one if every
+ * existing link has expired or been revoked. Use this whenever a link goes in an email.
+ */
+export async function getOrCreateValidGuestAccess(ticketId: string, email: string) {
+  const normalizedEmail = email.trim().toLowerCase();
+  const candidates = await prisma.ticketGuestAccess.findMany({
+    where: { ticketId, email: normalizedEmail, revokedAt: null },
+    orderBy: { createdAt: "desc" },
+    take: 5,
+  });
+  const valid = candidates.find((a) => isGuestAccessValid(a));
+  return valid ?? createGuestAccess(ticketId, normalizedEmail);
+}
+
+/** Revoke every customer link for a ticket (e.g. a link was forwarded to the wrong person). */
+export async function revokeGuestAccessForTicket(ticketId: string) {
+  const result = await prisma.ticketGuestAccess.updateMany({
+    where: { ticketId, revokedAt: null },
+    data: { revokedAt: new Date() },
+  });
+  return { revoked: result.count };
+}
+
+/** Look up a link by token. Returns null for unknown, expired or revoked links. */
 export async function getGuestAccessByToken(token: string) {
-  return prisma.ticketGuestAccess.findUnique({
+  if (!token || token.length > 128) return null;
+  const access = await prisma.ticketGuestAccess.findUnique({
     where: { token },
     include: {
       ticket: {
@@ -86,6 +114,11 @@ export async function getGuestAccessByToken(token: string) {
       },
     },
   });
+  if (!access || !isGuestAccessValid(access)) return null;
+  await prisma.ticketGuestAccess
+    .update({ where: { id: access.id }, data: { lastUsedAt: new Date() } })
+    .catch(() => undefined);
+  return access;
 }
 
 export async function createGuestTicket(data: {
@@ -172,14 +205,11 @@ export async function addGuestReply(token: string, body: string) {
 export async function notifyCustomerOfAgentReply(ticketId: string, replyBody: string) {
   const ticket = await prisma.ticket.findUnique({
     where: { id: ticketId },
-    include: { contact: true, guestAccess: true },
+    include: { contact: true },
   });
   if (!ticket?.contact?.email) return;
 
-  let access = ticket.guestAccess[0];
-  if (!access) {
-    access = await createGuestAccess(ticket.id, ticket.contact.email);
-  }
+  const access = await getOrCreateValidGuestAccess(ticket.id, ticket.contact.email);
 
   await sendTicketReplyEmail({
     to: ticket.contact.email,
@@ -197,14 +227,11 @@ export async function notifyCustomerOfStatusChange(
 ) {
   const ticket = await prisma.ticket.findUnique({
     where: { id: ticketId },
-    include: { contact: true, guestAccess: true },
+    include: { contact: true },
   });
   if (!ticket?.contact?.email) return;
 
-  let access = ticket.guestAccess[0];
-  if (!access) {
-    access = await createGuestAccess(ticket.id, ticket.contact.email);
-  }
+  const access = await getOrCreateValidGuestAccess(ticket.id, ticket.contact.email);
 
   await sendTicketStatusEmail({
     to: ticket.contact.email,
@@ -256,17 +283,13 @@ export async function listGuestTicketsForEmail(
     include: {
       status: true,
       priority: true,
-      guestAccess: { where: { email: normalizedEmail }, take: 1 },
     },
     orderBy: { updatedAt: "desc" },
   });
 
   const results = [];
   for (const ticket of tickets) {
-    let access = ticket.guestAccess[0];
-    if (!access) {
-      access = await createGuestAccess(ticket.id, normalizedEmail);
-    }
+    const access = await getOrCreateValidGuestAccess(ticket.id, normalizedEmail);
     results.push({
       ticketNumber: ticket.ticketNumber,
       subject: ticket.subject,
@@ -283,7 +306,7 @@ export async function listGuestTicketsForEmail(
 
 export async function listGuestTicketsForToken(token: string) {
   const access = await prisma.ticketGuestAccess.findUnique({ where: { token } });
-  if (!access) return null;
+  if (!access || !isGuestAccessValid(access)) return null;
 
   const ticket = await prisma.ticket.findUnique({
     where: { id: access.ticketId },

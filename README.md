@@ -86,10 +86,34 @@ npm run db:seed:phase1b
 npm run db:seed:phase1c
 ```
 
-To process inbound emails and SLA escalations:
+### Background worker (email + SLA)
+
+The worker fetches mail over IMAP, turns new messages into tickets, threads replies
+onto existing tickets, and runs SLA escalations.
 
 ```bash
-npm run email:worker
+npm run worker         # continuous (every WORKER_INTERVAL_SECONDS, default 60)
+npm run email:worker   # single pass, for cron
+```
+
+Email setup (see `.env.example`):
+
+- **Outbound:** set `SMTP_HOST` etc. Without it, emails are printed to the console.
+- **Inbound:** set `IMAP_HOST`/`IMAP_USER`/`IMAP_PASSWORD`, and add a matching mailbox under
+  **Administration → Email**. One IMAP account can serve several mailboxes (aliases).
+- **Threading:** outbound subjects carry a `[OCSD-1234]` tag. Customer replies with that tag
+  are added to the ticket as a reply (quoted history stripped). Replies to *closed* tickets
+  open a linked follow-up ticket. Auto-replies, bounces and our own mail are ignored.
+- **Sender matching:** known contact → their organisation; otherwise a contact or
+  organisation with the same (non-free-mail) domain; otherwise the organisation set in
+  tenant setting `unmatchedEmailOrganisationId`, or the first organisation.
+
+Microsoft 365 / Google Workspace mailboxes that require OAuth for IMAP aren't supported yet.
+
+### Tests
+
+```bash
+npm test
 ```
 
 ### Customer portal (no sign-in)
@@ -111,6 +135,10 @@ Copy integration links and embed code from **Administration → System**.
 - Status change — updated status with link
 
 Set `PORTAL_BASE_URL` in production so email links use your public domain.
+
+Customer links expire after `GUEST_LINK_TTL_DAYS` (default 30); every email carries a
+currently valid link. Agents can list or revoke a ticket's links via
+`GET/DELETE /api/v1/tickets/:id/guest-access`.
 
 ### Demo accounts
 
@@ -186,4 +214,9 @@ For production, set `DATABASE_URL` to a PostgreSQL connection string in `.env`:
 DATABASE_URL="postgresql://user:password@localhost:5432/ourcloud_service_desk"
 ```
 
-Then run `npx prisma migrate deploy`.
+Then run `npx prisma migrate deploy` (or `npx prisma db push` if you are not using migrations).
+
+### SLA business hours
+
+Business calendars are evaluated in the calendar's own timezone (e.g. `Pacific/Auckland`),
+regardless of the server's timezone, including DST changes and local-date holidays.
