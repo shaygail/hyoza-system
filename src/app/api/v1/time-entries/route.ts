@@ -4,6 +4,18 @@ import { listTimeEntries, createTimeEntry, approveTimeEntry, rejectTimeEntry } f
 import { prisma } from "@/lib/prisma";
 import { requirePermission, hasPermission } from "@/lib/permissions";
 
+/**
+ * Time is approved by service leads (people who manage tickets), not by finance:
+ * finance bills approved time but should not approve its own billable hours.
+ */
+async function canApproveTime(userId: string) {
+  const [viewAll, edit] = await Promise.all([
+    hasPermission(userId, "tickets.view_all"),
+    hasPermission(userId, "tickets.edit"),
+  ]);
+  return viewAll && edit;
+}
+
 export async function GET(request: Request) {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -26,17 +38,13 @@ export async function POST(request: Request) {
 
   try {
     if (body.action === "approve") {
-      const canApprove =
-        (await hasPermission(session.user.id, "billing.edit")) ||
-        (await hasPermission(session.user.id, "tickets.view_all"));
+      const canApprove = await canApproveTime(session.user.id);
       if (!canApprove) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       const entry = await approveTimeEntry(session.user.tenantId, body.entryId, session.user.id);
       return NextResponse.json(entry);
     }
     if (body.action === "reject") {
-      const canApprove =
-        (await hasPermission(session.user.id, "billing.edit")) ||
-        (await hasPermission(session.user.id, "tickets.view_all"));
+      const canApprove = await canApproveTime(session.user.id);
       if (!canApprove) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       const entry = await rejectTimeEntry(session.user.tenantId, body.entryId, session.user.id);
       return NextResponse.json(entry);

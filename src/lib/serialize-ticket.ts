@@ -2,6 +2,22 @@ import type { getTicket } from "@/domain/tickets";
 
 type TicketWithRelations = NonNullable<Awaited<ReturnType<typeof getTicket>>>;
 
+/**
+ * Removes staff-only content (internal notes, escalation watchers, internal activity)
+ * for users without the tickets.internal_notes permission.
+ */
+export function redactInternal<
+  T extends { internalNotes: unknown[]; watchers?: unknown[]; activities: { visibility: string }[] },
+>(ticket: T, canSeeInternal: boolean): T {
+  if (canSeeInternal) return ticket;
+  return {
+    ...ticket,
+    internalNotes: [],
+    watchers: [],
+    activities: ticket.activities.filter((a) => a.visibility !== "internal"),
+  };
+}
+
 export function serializeTicketForClient(ticket: TicketWithRelations) {
   return {
     ...ticket,

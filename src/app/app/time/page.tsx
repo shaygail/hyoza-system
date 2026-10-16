@@ -8,9 +8,10 @@ export default async function TimePage() {
   if (!session?.user) return null;
 
   const entries = await listTimeEntries(session.user.tenantId);
+  // Service leads approve time; finance bills it (separation of duties).
   const canApprove =
-    (await hasPermission(session.user.id, "billing.edit")) ||
-    (await hasPermission(session.user.id, "tickets.view_all"));
+    (await hasPermission(session.user.id, "tickets.view_all")) &&
+    (await hasPermission(session.user.id, "tickets.edit"));
 
   return (
     <TimeEntriesClient

@@ -16,7 +16,15 @@ interface Notification {
 }
 
 /** Jira-style global navigation bar. */
-export function Header({ userName }: { userName?: string | null }) {
+export function Header({
+  userName,
+  permissions = [],
+}: {
+  userName?: string | null;
+  permissions?: string[];
+}) {
+  const isService = permissions.includes("tickets.edit");
+  const canBill = permissions.includes("billing.view");
   const router = useRouter();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [menu, setMenu] = useState<"notifications" | "profile" | null>(null);
@@ -66,7 +74,10 @@ export function Header({ userName }: { userName?: string | null }) {
       <button type="button" className={`${iconButton} rounded-[3px]`} aria-label="Apps">
         <Grip className="h-5 w-5" />
       </button>
-      <Link href="/app/dashboard" className="flex items-center gap-1.5 rounded-[3px] px-1.5 py-1 hover:bg-[#091e420f]">
+      <Link
+        href={isService ? "/app/dashboard" : "/app/finance"}
+        className="flex items-center gap-1.5 rounded-[3px] px-1.5 py-1 hover:bg-[#091e420f]"
+      >
         <span className="flex h-6 w-6 items-center justify-center rounded-[4px] bg-ourcloud-600 text-white">
           <Cloud className="h-3.5 w-3.5" strokeWidth={2.5} />
         </span>
@@ -75,9 +86,14 @@ export function Header({ userName }: { userName?: string | null }) {
 
       <nav className="ml-2 hidden items-center gap-0.5 md:flex">
         {[
-          { href: "/app/dashboard", label: "Your work" },
-          { href: "/app/queues", label: "Queues" },
-          { href: "/app/reports", label: "Dashboards" },
+          ...(isService
+            ? [
+                { href: "/app/dashboard", label: "Your work" },
+                { href: "/app/queues", label: "Queues" },
+                { href: "/app/reports", label: "Dashboards" },
+              ]
+            : []),
+          ...(canBill ? [{ href: "/app/finance", label: "Finance" }] : []),
         ].map((item) => (
           <Link
             key={item.href}
@@ -87,17 +103,19 @@ export function Header({ userName }: { userName?: string | null }) {
             {item.label}
           </Link>
         ))}
-        <Link
-          href="/app/tickets/new"
-          className="ml-2 inline-flex h-8 items-center gap-1 rounded-[3px] bg-ourcloud-600 px-3 text-sm font-medium text-white hover:bg-ourcloud-700"
-        >
-          <Plus className="h-4 w-4" strokeWidth={2.5} />
-          Create
-        </Link>
+        {permissions.includes("tickets.create") && isService && (
+          <Link
+            href="/app/tickets/new"
+            className="ml-2 inline-flex h-8 items-center gap-1 rounded-[3px] bg-ourcloud-600 px-3 text-sm font-medium text-white hover:bg-ourcloud-700"
+          >
+            <Plus className="h-4 w-4" strokeWidth={2.5} />
+            Create
+          </Link>
+        )}
       </nav>
 
       <div className="ml-auto flex items-center gap-1">
-        <form onSubmit={search} className="relative hidden sm:block">
+        <form onSubmit={search} className={`relative hidden ${isService ? "sm:block" : ""}`}>
           <Search className="pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
           <input
             value={q}
@@ -170,12 +188,16 @@ export function Header({ userName }: { userName?: string | null }) {
           )}
         </div>
 
-        <Link href="/app/knowledge" className={iconButton} aria-label="Help">
-          <CircleQuestionMark className="h-5 w-5" />
-        </Link>
-        <Link href="/app/admin" className={iconButton} aria-label="Settings">
-          <Settings className="h-5 w-5" />
-        </Link>
+        {isService && (
+          <Link href="/app/knowledge" className={iconButton} aria-label="Help">
+            <CircleQuestionMark className="h-5 w-5" />
+          </Link>
+        )}
+        {permissions.some((p) => p.startsWith("admin.")) && (
+          <Link href="/app/admin" className={iconButton} aria-label="Settings">
+            <Settings className="h-5 w-5" />
+          </Link>
+        )}
 
         <div className="relative">
           <button

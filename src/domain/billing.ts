@@ -1,7 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { getContractUsage } from "@/domain/contracts";
+import { buildInvoiceLines, invoiceTotals } from "@/domain/invoice-lines";
 
-async function nextInvoiceNumber(tenantId: string) {
+export async function nextInvoiceNumber(tenantId: string) {
   const count = await prisma.invoice.count({ where: { tenantId } });
   return `INV-${String(count + 1).padStart(5, "0")}`;
 }
@@ -130,107 +131,8 @@ export async function generateInvoiceDraft(tenantId: string, billingPeriodId: st
   if (existing) throw new Error("An invoice already exists for this period");
 
   const contract = period.contract;
-  const lines: { description: string; quantity: number; unitAmount: number; lineTotal: number; lineType: string }[] = [];
-
-  if (contract.contractType === "retainer" && contract.retainerAmount != null) {
-    lines.push({
-      description: `Monthly retainer — ${period.label}`,
-      quantity: 1,
-      unitAmount: contract.retainerAmount,
-      lineTotal: contract.retainerAmount,
-      lineType: "retainer",
-    });
-  }
-
-  const rateMap = new Map(
-    (contract.rateCard?.lines ?? []).map((l) => [l.workTypeId, l.hourlyRate])
-  );
-  const defaultRate = contract.overageHourlyRate ?? 150;
-
-  const approvedBillable = period.timeEntries.filter((e) => e.isBillable && e.status === "approved");
-  const totalMinutes = approvedBillable.reduce((s, e) => s + e.durationMinutes, 0);
-
-  if (contract.contractType === "block_hours") {
-    const allowance = contract.monthlyMinutes ?? 0;
-    const overageMinutes = Math.max(0, totalMinutes - allowance);
-    if (overageMinutes > 0) {
-      const hours = overageMinutes / 60;
-      const rate = defaultRate;
-      lines.push({
-        description: `Block hours overage (${overageMinutes}m beyond ${allowance}m)`,
-        quantity: Math.round(hours * 100) / 100,
-        unitAmount: rate,
-        lineTotal: Math.round(hours * rate * 100) / 100,
-        lineType: "overage",
-      });
-    } else if (totalMinutes > 0) {
-      lines.push({
-        description: `Included block hours usage (${totalMinutes}m of ${allowance}m)`,
-        quantity: 0,
-        unitAmount: 0,
-        lineTotal: 0,
-        lineType: "included",
-      });
-    }
-  } else if (contract.contractType === "tm" || contract.contractType === "retainer") {
-    const byType = new Map<string, { minutes: number; name: string; rate: number }>();
-    for (const entry of approvedBillable) {
-      const key = entry.workTypeId ?? "default";
-      const rate = entry.workTypeId ? rateMap.get(entry.workTypeId) ?? defaultRate : defaultRate;
-      const existingLine = byType.get(key) ?? {
-        minutes: 0,
-        name: entry.workType?.name ?? "General",
-        rate,
-      };
-      existingLine.minutes += entry.durationMinutes;
-      byType.set(key, existingLine);
-    }
-
-    for (const [, group] of byType) {
-      const hours = group.minutes / 60;
-      const amount = Math.round(hours * group.rate * 100) / 100;
-      if (contract.contractType === "retainer") {
-        // Retainer already billed; T&M lines only for visibility of usage at $0 unless overage configured
-        continue;
-      }
-      lines.push({
-        description: `Time & materials — ${group.name}`,
-        quantity: Math.round(hours * 100) / 100,
-        unitAmount: group.rate,
-        lineTotal: amount,
-        lineType: "time",
-      });
-    }
-
-    if (contract.contractType === "retainer" && contract.monthlyMinutes != null) {
-      const overageMinutes = Math.max(0, totalMinutes - contract.monthlyMinutes);
-      if (overageMinutes > 0) {
-        const hours = overageMinutes / 60;
-        const rate = defaultRate;
-        lines.push({
-          description: `Retainer overage (${overageMinutes}m)`,
-          quantity: Math.round(hours * 100) / 100,
-          unitAmount: rate,
-          lineTotal: Math.round(hours * rate * 100) / 100,
-          lineType: "overage",
-        });
-      }
-    }
-  }
-
-  if (lines.length === 0) {
-    lines.push({
-      description: `No billable charges for ${period.label}`,
-      quantity: 0,
-      unitAmount: 0,
-      lineTotal: 0,
-      lineType: "info",
-    });
-  }
-
-  const subtotal = lines.reduce((s, l) => s + l.lineTotal, 0);
-  const taxAmount = Math.round(subtotal * 0.15 * 100) / 100;
-  const total = Math.round((subtotal + taxAmount) * 100) / 100;
+  const lines = buildInvoiceLines(contract, period.label, period.timeEntries);
+  const { subtotal, taxAmount, total } = invoiceTotals(lines);
 
   const invoiceNumber = await nextInvoiceNumber(tenantId);
 

@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { getTicket, updateTicket } from "@/domain/tickets";
-import { requirePermission } from "@/lib/permissions";
-import { serializeTicketForClient } from "@/lib/serialize-ticket";
+import { hasPermission, requirePermission } from "@/lib/permissions";
+import { redactInternal, serializeTicketForClient } from "@/lib/serialize-ticket";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
@@ -18,7 +18,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   const ticket = await getTicket(session.user.tenantId, id);
   if (!ticket) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  return NextResponse.json(serializeTicketForClient(ticket));
+  const canSeeInternal = await hasPermission(session.user.id, "tickets.internal_notes");
+  return NextResponse.json(redactInternal(serializeTicketForClient(ticket), canSeeInternal));
 }
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -38,7 +39,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     await updateTicket(session.user.tenantId, id, session.user.id, body);
     const full = await getTicket(session.user.tenantId, id);
     if (!full) return NextResponse.json({ error: "Not found" }, { status: 404 });
-    return NextResponse.json(serializeTicketForClient(full));
+    const canSeeInternal = await hasPermission(session.user.id, "tickets.internal_notes");
+    return NextResponse.json(redactInternal(serializeTicketForClient(full), canSeeInternal));
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 400 });
   }
